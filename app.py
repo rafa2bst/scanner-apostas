@@ -8,7 +8,7 @@ from datetime import datetime
 # CONFIGURAÇÕES DA PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Scanner de Apostas - v1.2",
+    page_title="Scanner de Apostas - v1.3",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,12 +17,11 @@ st.set_page_config(
 # ==========================================
 # CONTROLE DE VERSÃO DO APLICATIVO
 # ==========================================
-APP_VERSION = "v1.2"
+APP_VERSION = "v1.3"
 
 # ==========================================
-# CONFIGURAÇÕES DE API / SUPABASE / SECRETS
+# CONFIGURAÇÕES DE API / SECRETS
 # ==========================================
-# Busca chave de secrets do Streamlit ou usa fallback para testes
 API_KEY = st.secrets.get("API_FOOTBALL_KEY", "SUA_CHAVE_API_SPORTS")
 BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {
@@ -34,20 +33,52 @@ HEADERS = {
 # GERENCIAMENTO DE SESSÃO / AUTENTICAÇÃO
 # ==========================================
 if 'autenticado' not in st.session_state:
-    st.session_state['autenticado'] = True  # Altere para False se usar controle de login
+    st.session_state['autenticado'] = True
 if 'usuario' not in st.session_state:
     st.session_state['usuario'] = "rafael.andrade.sa@gmail.com"
-if 'pagina_atual' not in st.session_state:
-    st.session_state['pagina_atual'] = "Historico"
 
 # ==========================================
-# FUNÇÃO DE BUSCA DOS ÚLTIMOS 10 JOGOS (HÍBRIDA)
+# FUNÇÃO 1: BUSCAR JOGOS DO DIA (GRADE GERAL)
+# ==========================================
+@st.cache_data(ttl=600)
+def carregar_jogos_do_dia(data_str):
+    """Busca as partidas do dia na API-Sports."""
+    try:
+        url = f"{BASE_URL}/fixtures?date={data_str}"
+        response = requests.get(url, headers=HEADERS, timeout=8)
+        
+        if response.status_code == 200:
+            fixtures = response.json().get('response', [])
+            jogos = []
+            
+            for f in fixtures:
+                status = f['fixture']['status']['short']
+                gh = f['goals']['home']
+                ga = f['goals']['away']
+                placar = f"{gh} x {ga}" if gh is not None and ga is not None else "v"
+                
+                jogos.append({
+                    "Hora": f['fixture']['date'][11:16],
+                    "País": f['league']['country'],
+                    "Liga": f['league']['name'],
+                    "Mandante": f['teams']['home']['name'],
+                    "Placar": placar,
+                    "Visitante": f['teams']['away']['name'],
+                    "Status": status
+                })
+            return pd.DataFrame(jogos)
+    except Exception as e:
+        st.error(f"Erro ao conectar com a API: {e}")
+    return pd.DataFrame()
+
+# ==========================================
+# FUNÇÃO 2: HISTÓRICO 10 JOGOS (SOFASCORE + FALLBACK)
 # ==========================================
 @st.cache_data(ttl=300)
 def carregar_ultimos_10_jogos(nome_time):
     """
     Tenta buscar os últimos 10 jogos no Sofascore via cloudscraper.
-    Se falhar ou for bloqueado, busca via API-Sports como fallback.
+    Se falhar, recorre à API-Sports como garantia.
     """
     # 1. TENTATIVA VIA SOFASCORE (CLOUDSCRAPER)
     try:
@@ -155,7 +186,7 @@ with st.sidebar:
                 "🔍 Análise Pré-Jogo (IA)",
                 "💾 Banco de Dados Supabase"
             ],
-            index=1
+            index=0
         )
         
         st.markdown("---")
@@ -177,62 +208,58 @@ with st.sidebar:
 # TELA 1: GRADE GERAL DE JOGOS
 if "Grade Geral" in opcao:
     st.header("📅 Grade Geral de Jogos do Dia")
-    st.info("Em breve: Lista automatizada das partidas selecionadas para a rodada.")
+    
+    col_data, _ = st.columns([1, 2])
+    with col_data:
+        data_consulta = st.date_input("Selecione a data:", value=datetime.now())
+    
+    data_str = data_consulta.strftime("%Y-%m-%d")
+    
+    with st.spinner("Carregando grade de jogos..."):
+        df_jogos = carregar_jogos_do_dia(data_str)
+        
+        if not df_jogos.empty:
+            st.success(f"Encontrados **{len(df_jogos)}** jogos para {data_consulta.strftime('%d/%m/%Y')}:")
+            
+            col_f1, col_f2 = st.columns(2)
+            with col_f1:
+                ligas_disponiveis = ["Todas"] + sorted(list(df_jogos['Liga'].unique()))
+                liga_selecionada = st.selectbox("Filtrar por Campeonato:", ligas_disponiveis)
+            with col_f2:
+                busca_time = st.text_input("Buscar Time:", placeholder="Digite o nome do time...")
+            
+            df_exibicao = df_jogos.copy()
+            if liga_selecionada != "Todas":
+                df_exibicao = df_exibicao[df_exibicao['Liga'] == liga_selecionada]
+            if busca_time:
+                df_exibicao = df_exibicao[
+                    df_exibicao['Mandante'].str.contains(busca_time, case=False, na=False) |
+                    df_exibicao['Visitante'].str.contains(busca_time, case=False, na=False)
+                ]
+                
+            st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
+        else:
+            st.warning("Nenhum jogo encontrado para esta data ou chave de API não configurada.")
 
 # TELA 2: HISTÓRICO DOS ÚLTIMOS 10 JOGOS
 elif "Histórico" in opcao:
     st.title("📊 Histórico dos ÚLTIMOS 10 JOGOS das Equipes")
     
-    col_data, col_jogo = st.columns([1, 2])
+    col_input, col_btn = st.columns([3, 1])
+    with col_input:
+        time_pesquisado = st.text_input("Digite o nome do time:", value="Cruz Azul")
     
-    with col_data:
-        data_selecionada = st.selectbox(
-            "Escolha a data do confronto:",
-            ["07/08/2026 (Hoje)", "Amanhã", "Próxima Rodada"]
-        )
-        
-    with col_jogo:
-        partida_selecionada = st.selectbox(
-            "Selecione a partida para visualizar o histórico:",
-            [
-                "Cruz Azul x Philadelphia Union (Leagues Cup)",
-                "Flamengo x Palmeiras (Brasileirão)",
-                "Real Madrid x Barcelona (La Liga)"
-            ]
-        )
-
-    # Extrai os nomes dos times
-    times = partida_selecionada.split(" x ")
-    time_mandante = times[0].strip()
-    time_visitante = times[1].split("(")[0].strip() if len(times) > 1 else ""
-
-    if st.button("🔎 Carregar Histórico Atualizado", type="primary"):
-        st.session_state['carregou_historico'] = True
-
-    if st.session_state.get('carregou_historico', True):
-        c1, c2 = st.columns(2)
-        
-        # Histórico Mandante
-        with c1:
-            st.subheader(f"🏠 {time_mandante} - ÚLTIMOS 10 JOGOS")
-            with st.spinner(f"Buscando histórico do {time_mandante}..."):
-                dados_m = carregar_ultimos_10_jogos(time_mandante)
-                if dados_m:
-                    df_m = pd.DataFrame(dados_m)
-                    st.dataframe(df_m, use_container_width=True, hide_index=True)
+    if st.button("🔎 Buscar Histórico de 10 Jogos", type="primary"):
+        if time_pesquisado:
+            with st.spinner(f"Buscando histórico recente de {time_pesquisado}..."):
+                dados = carregar_ultimos_10_jogos(time_pesquisado)
+                if dados:
+                    df_h = pd.DataFrame(dados)
+                    st.dataframe(df_h, use_container_width=True, hide_index=True)
                 else:
                     st.warning("Histórico não encontrado.")
-
-        # Histórico Visitante
-        with c2:
-            st.subheader(f"🚀 {time_visitante} - ÚLTIMOS 10 JOGOS")
-            with st.spinner(f"Buscando histórico do {time_visitante}..."):
-                dados_v = carregar_ultimos_10_jogos(time_visitante)
-                if dados_v:
-                    df_v = pd.DataFrame(dados_v)
-                    st.dataframe(df_v, use_container_width=True, hide_index=True)
-                else:
-                    st.warning("Histórico não encontrado.")
+        else:
+            st.info("Digite o nome de uma equipe para realizar a consulta.")
 
 # TELA 3: ANÁLISE PRÉ-JOGO (IA)
 elif "Análise" in opcao:
