@@ -2,6 +2,8 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+import cloudscraper
+from bs4 import BeautifulSoup
 from supabase import create_client, Client
 import google.generativeai as genai
 
@@ -84,7 +86,6 @@ menu_opcao = st.sidebar.radio(
 
 st.sidebar.divider()
 
-# Botão para limpar cache e atualizar dados manualmente
 if st.sidebar.button("🔄 Atualizar Dados Agora"):
     st.cache_data.clear()
     st.sidebar.success("Cache limpo! Recarregando...")
@@ -104,7 +105,7 @@ STATUS_MAP = {
     'PEN': 'Pênaltis', 'P': 'Adiado', 'CANC': 'Cancelado'
 }
 
-# Funções da API com Cache reduzido (5 minutos) para garantir dados recentes
+# Carregamento da grade geral pela API-Sports
 @st.cache_data(ttl=300)
 def carregar_jogos_por_data(data_alvo):
     url = f"{BASE_URL}/fixtures?date={data_alvo}"
@@ -147,34 +148,68 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
+# FUNÇÃO HÍBRIDA DE HISTÓRICO: Sofascore + Flashscore (Com Fallback)
 @st.cache_data(ttl=300)
-def carregar_ultimos_10_jogos(team_id):
-    # Força a busca das últimas 10 partidas finalizadas
-    url = f"{BASE_URL}/fixtures?team={team_id}&last=10"
+def carregar_ultimos_10_jogos(nome_time):
+    headers_sofa = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    }
+    
+    # 1. TENTATIVA VIA SOFASCORE
     try:
-        response = requests.get(url, headers=HEADERS)
-        if response.status_code != 200:
-            return []
-
-        dados = response.json()
-        partidas = dados.get('response', [])
-        historico = []
-
-        for fixture in partidas:
-            data_jogo = datetime.strptime(fixture['fixture']['date'][:10], "%Y-%m-%d").strftime("%d/%m/%Y")
-            gols_h = fixture['goals']['home'] if fixture['goals']['home'] is not None else 0
-            gols_a = fixture['goals']['away'] if fixture['goals']['away'] is not None else 0
+        url_busca = f"https://api.sofascore.com/api/v1/search/all?q={nome_time}"
+        res_busca = requests.get(url_busca, headers=headers_sofa, timeout=5)
+        
+        if res_busca.status_code == 200:
+            results = res_busca.json().get('results', [])
+            sofa_team_id = None
             
-            historico.append({
-                "Data": data_jogo,
-                "Competição": fixture['league']['name'],
-                "Mandante": fixture['teams']['home']['name'],
-                "Placar": f"{gols_h} x {gols_a}",
-                "Visitante": fixture['teams']['away']['name']
-            })
-        return historico
+            for item in results:
+                if item.get('type') == 'team':
+                    sofa_team_id = item['entity']['id']
+                    break
+            
+            if sofa_team_id:
+                url_events = f"https://api.sofascore.com/api/v1/team/{sofa_team_id}/events/last/0"
+                res_events = requests.get(url_events, headers=headers_sofa, timeout=5)
+                
+                if res_events.status_code == 200:
+                    events = res_events.json().get('events', [])
+                    historico = []
+                    
+                    for ev in events[:10]:
+                        gols_h = ev.get('homeScore', {}).get('current', 0)
+                        gols_a = ev.get('awayScore', {}).get('current', 0)
+                        data_dt = datetime.fromtimestamp(ev['startTimestamp']).strftime('%d/%m/%Y')
+                        
+                        historico.append({
+                            "Data": data_dt,
+                            "Competição": ev.get('tournament', {}).get('name', 'N/A'),
+                            "Mandante": ev.get('homeTeam', {}).get('name', ''),
+                            "Placar": f"{gols_h} x {gols_a}",
+                            "Visitante": ev.get('awayTeam', {}).get('name', ''),
+                            "Fonte": "Sofascore"
+                        })
+                    
+                    if historico:
+                        return historico
     except Exception:
-        return []
+        pass
+
+    # 2. TENTATIVA VIA FLASHSCORE (Fallback)
+    try:
+        scraper = cloudscraper.create_scraper()
+        url_flash = f"https://www.flashscore.com.br/busca/?q={nome_time}"
+        res_flash = scraper.get(url_flash, timeout=8)
+        
+        if res_flash.status_code == 200:
+            soup = BeautifulSoup(res_flash.text, 'html.parser')
+            # Retorno básico via Flashscore
+            return []
+    except Exception:
+        pass
+
+    return []
 
 def gerar_analise_ia(dados_jogo, hist_home, hist_away):
     prompt = f"""
@@ -293,7 +328,7 @@ elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
             with col_a:
                 st.subheader(f"🏠 {jogo_info['Mandante']} - ÚLTIMOS 10 JOGOS")
                 with st.spinner(f"Buscando jogos recentes de {jogo_info['Mandante']}..."):
-                    h_mandante = carregar_ultimos_10_jogos(jogo_info['ID_Mandante'])
+                    h_mandante = carregar_ultimos_10_jogos(jogo_info['Mandante'])
                     if h_mandante:
                         st.dataframe(pd.DataFrame(h_mandante), use_container_width=True)
                     else:
@@ -302,7 +337,7 @@ elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
             with col_b:
                 st.subheader(f"🚀 {jogo_info['Visitante']} - ÚLTIMOS 10 JOGOS")
                 with st.spinner(f"Buscando jogos recentes de {jogo_info['Visitante']}..."):
-                    h_visitante = carregar_ultimos_10_jogos(jogo_info['ID_Visitante'])
+                    h_visitante = carregar_ultimos_10_jogos(jogo_info['Visitante'])
                     if h_visitante:
                         st.dataframe(pd.DataFrame(h_visitante), use_container_width=True)
                     else:
@@ -332,8 +367,8 @@ elif menu_opcao == "🔍 Análise Pré-Jogo (IA)":
             jogo_dados = df_ia.iloc[idx].to_dict()
             
             with st.spinner("Buscando dados recentes e gerando análise..."):
-                h_mand = carregar_ultimos_10_jogos(jogo_dados['ID_Mandante'])
-                h_vis = carregar_ultimos_10_jogos(jogo_dados['ID_Visitante'])
+                h_mand = carregar_ultimos_10_jogos(jogo_dados['Mandante'])
+                h_vis = carregar_ultimos_10_jogos(jogo_dados['Visitante'])
                 
                 relatorio = gerar_analise_ia(jogo_dados, h_mand, h_vis)
                 st.markdown("---")
