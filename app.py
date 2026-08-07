@@ -8,7 +8,7 @@ from datetime import datetime
 # CONFIGURAÇÕES DA PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Scanner de Apostas - v1.3",
+    page_title="Scanner de Apostas - v1.4",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,7 +17,7 @@ st.set_page_config(
 # ==========================================
 # CONTROLE DE VERSÃO DO APLICATIVO
 # ==========================================
-APP_VERSION = "v1.3"
+APP_VERSION = "v1.4"
 
 # ==========================================
 # CONFIGURAÇÕES DE API / SECRETS
@@ -26,7 +26,8 @@ API_KEY = st.secrets.get("API_FOOTBALL_KEY", "SUA_CHAVE_API_SPORTS")
 BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {
     'x-rapidapi-host': "v3.football.api-sports.io",
-    'x-rapidapi-key': API_KEY
+    'x-rapidapi-key': API_KEY,
+    'x-apisports-key': API_KEY
 }
 
 # ==========================================
@@ -40,36 +41,78 @@ if 'usuario' not in st.session_state:
 # ==========================================
 # FUNÇÃO 1: BUSCAR JOGOS DO DIA (GRADE GERAL)
 # ==========================================
-@st.cache_data(ttl=600)
+@st.cache_data(ttl=300)
 def carregar_jogos_do_dia(data_str):
-    """Busca as partidas do dia na API-Sports."""
+    """
+    Busca as partidas do dia na API-Sports especificando fuso do Brasil.
+    Em caso de falha, aciona o fallback para o Sofascore.
+    """
+    jogos = []
+    
+    # 1. TENTATIVA VIA API-SPORTS
     try:
-        url = f"{BASE_URL}/fixtures?date={data_str}"
-        response = requests.get(url, headers=HEADERS, timeout=8)
+        url = f"{BASE_URL}/fixtures?date={data_str}&timezone=America/Sao_Paulo"
+        response = requests.get(url, headers=HEADERS, timeout=10)
         
         if response.status_code == 200:
-            fixtures = response.json().get('response', [])
-            jogos = []
+            res_json = response.json()
+            errors = res_json.get('errors', {})
             
-            for f in fixtures:
-                status = f['fixture']['status']['short']
-                gh = f['goals']['home']
-                ga = f['goals']['away']
-                placar = f"{gh} x {ga}" if gh is not None and ga is not None else "v"
-                
-                jogos.append({
-                    "Hora": f['fixture']['date'][11:16],
-                    "País": f['league']['country'],
-                    "Liga": f['league']['name'],
-                    "Mandante": f['teams']['home']['name'],
-                    "Placar": placar,
-                    "Visitante": f['teams']['away']['name'],
-                    "Status": status
-                })
-            return pd.DataFrame(jogos)
+            if errors and len(errors) > 0:
+                st.warning(f"⚠️ Aviso da API-Sports: {errors}")
+            else:
+                fixtures = res_json.get('response', [])
+                for f in fixtures:
+                    status = f['fixture']['status']['short']
+                    gh = f['goals']['home']
+                    ga = f['goals']['away']
+                    placar = f"{gh} x {ga}" if gh is not None and ga is not None else "v"
+                    
+                    jogos.append({
+                        "Hora": f['fixture']['date'][11:16],
+                        "País": f['league']['country'],
+                        "Liga": f['league']['name'],
+                        "Mandante": f['teams']['home']['name'],
+                        "Placar": placar,
+                        "Visitante": f['teams']['away']['name'],
+                        "Status": status,
+                        "Fonte": "API-Sports"
+                    })
     except Exception as e:
-        st.error(f"Erro ao conectar com a API: {e}")
-    return pd.DataFrame()
+        st.error(f"Erro ao conectar com API-Sports: {e}")
+
+    # 2. FALLBACK VIA SOFASCORE (CASO RETORNE VAZIO)
+    if not jogos:
+        try:
+            url_sofa = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{data_str}"
+            headers_sofa = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            }
+            res_sofa = requests.get(url_sofa, headers=headers_sofa, timeout=10)
+            
+            if res_sofa.status_code == 200:
+                events = res_sofa.json().get('events', [])
+                for ev in events:
+                    timestamp = ev.get('startTimestamp')
+                    hora_str = datetime.fromtimestamp(timestamp).strftime("%H:%M") if timestamp else "N/A"
+                    gols_h = ev.get('homeScore', {}).get('current')
+                    gols_a = ev.get('awayScore', {}).get('current')
+                    placar = f"{gols_h} x {gols_a}" if gols_h is not None and gols_a is not None else "v"
+                    
+                    jogos.append({
+                        "Hora": hora_str,
+                        "País": ev.get('tournament', {}).get('category', {}).get('name', 'N/A'),
+                        "Liga": ev.get('tournament', {}).get('name', 'N/A'),
+                        "Mandante": ev.get('homeTeam', {}).get('name', ''),
+                        "Placar": placar,
+                        "Visitante": ev.get('awayTeam', {}).get('name', ''),
+                        "Status": ev.get('status', {}).get('type', 'NS'),
+                        "Fonte": "Sofascore"
+                    })
+        except Exception:
+            pass
+
+    return pd.DataFrame(jogos)
 
 # ==========================================
 # FUNÇÃO 2: HISTÓRICO 10 JOGOS (SOFASCORE + FALLBACK)
@@ -239,7 +282,7 @@ if "Grade Geral" in opcao:
                 
             st.dataframe(df_exibicao, use_container_width=True, hide_index=True)
         else:
-            st.warning("Nenhum jogo encontrado para esta data ou chave de API não configurada.")
+            st.warning("Nenhum jogo encontrado para esta data.")
 
 # TELA 2: HISTÓRICO DOS ÚLTIMOS 10 JOGOS
 elif "Histórico" in opcao:
