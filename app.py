@@ -7,9 +7,14 @@ from bs4 import BeautifulSoup
 from supabase import create_client, Client
 import google.generativeai as genai
 
+# ==========================================
+# CONTROLE DE VERSÃO DO APLICATIVO
+# ==========================================
+APP_VERSION = "v1.1"
+
 # Configurações da página
 st.set_page_config(
-    page_title="Scanner de Apostas - Painel Completo",
+    page_title=f"Scanner de Apostas - Painel ({APP_VERSION})",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -55,7 +60,7 @@ def fazer_logout():
 
 # ----- TELA DE LOGIN SE NÃO ESTIVER AUTENTICADO -----
 if st.session_state.user is None:
-    st.sidebar.title("🔐 Área Restrita")
+    st.sidebar.title(f"🔐 Área Restrita ({APP_VERSION})")
     st.sidebar.subheader("Acesse sua conta")
     email_input = st.sidebar.text_input("E-mail")
     senha_input = st.sidebar.text_input("Senha", type="password")
@@ -66,12 +71,12 @@ if st.session_state.user is None:
         else:
             st.sidebar.warning("Preencha e-mail e senha.")
             
-    st.title("🔒 Acesso Restrito")
+    st.title(f"🔒 Acesso Restrito - {APP_VERSION}")
     st.info("Por favor, faça login na barra lateral para acessar o scanner.")
     st.stop()
 
-# ----- MENU LATERAL (HAMBÚRGUER) -----
-st.sidebar.title("☰ Menu")
+# ----- MENU LATERAL (HAMBÚRGUER COM IDENTIFICADOR DE VERSÃO) -----
+st.sidebar.title(f"☰ Menu ({APP_VERSION})")
 st.sidebar.caption(f"👤 Conectado: **{st.session_state.user.email}**")
 
 menu_opcao = st.sidebar.radio(
@@ -93,6 +98,9 @@ if st.sidebar.button("🔄 Atualizar Dados Agora"):
 
 if st.sidebar.button("🚪 Sair (Logout)"):
     fazer_logout()
+
+# Rodapé do menu com indicação da versão
+st.sidebar.caption(f"⚙️ Painel de Apostas - Versão **{APP_VERSION}**")
 
 # Configurações da API de Futebol
 API_KEY = "17948bfd5d3ed61ae0cb0aa7a97f5e09"
@@ -204,7 +212,6 @@ def carregar_ultimos_10_jogos(nome_time):
         
         if res_flash.status_code == 200:
             soup = BeautifulSoup(res_flash.text, 'html.parser')
-            # Retorno básico via Flashscore
             return []
     except Exception:
         pass
