@@ -6,7 +6,7 @@ from supabase import create_client, Client
 
 # Configurações da página
 st.set_page_config(
-    page_title="Grade de Jogos + Supabase",
+    page_title="Scanner de Apostas - Login",
     page_icon="⚽",
     layout="wide"
 )
@@ -18,11 +18,53 @@ def init_supabase():
         url = st.secrets["SUPABASE_URL"]
         key = st.secrets["SUPABASE_KEY"]
         return create_client(url, key)
-    except Exception as e:
-        st.error("Chaves do Supabase não configuradas nos Secrets do Streamlit.")
+    except Exception:
+        st.error("Erro nas credenciais do Supabase. Verifique os Secrets no Streamlit Cloud.")
         return None
 
 supabase = init_supabase()
+
+# ----- SISTEMA DE AUTENTICAÇÃO -----
+if "user" not in st.session_state:
+    st.session_state.user = None
+
+def fazer_login(email, password):
+    try:
+        res = supabase.auth.sign_in_with_password({"email": email, "password": password})
+        st.session_state.user = res.user
+        st.success("Login realizado com sucesso!")
+        st.rerun()
+    except Exception as e:
+        st.error("Erro ao fazer login: E-mail ou senha incorretos.")
+
+def fazer_logout():
+    supabase.auth.sign_out()
+    st.session_state.user = None
+    st.rerun()
+
+# Barra Lateral - Tela de Login
+st.sidebar.title("🔐 Área Restrita")
+
+if st.session_state.user is None:
+    st.sidebar.subheader("Acesse sua conta")
+    email_input = st.sidebar.text_input("E-mail")
+    senha_input = st.sidebar.text_input("Senha", type="password")
+    
+    if st.sidebar.button("Entrar"):
+        if email_input and senha_input:
+            fazer_login(email_input, senha_input)
+        else:
+            st.sidebar.warning("Preencha e-mail e senha.")
+            
+    st.title("🔒 Acesso Restrito")
+    st.info("Por favor, faça login na barra lateral esquerda para acessar o scanner de jogos.")
+    st.stop() # Interrompe a execução do restante da página
+
+# ----- CONTEÚDO PROTEGIDO (EXIBIDO APENAS APÓS LOGIN) -----
+
+st.sidebar.write(f"👤 Conectado como: **{st.session_state.user.email}**")
+if st.sidebar.button("Sair (Logout)"):
+    fazer_logout()
 
 # Configurações da API de Futebol
 API_KEY = "17948bfd5d3ed61ae0cb0aa7a97f5e09"
@@ -30,15 +72,9 @@ BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {"x-apisports-key": API_KEY}
 
 STATUS_MAP = {
-    'NS': 'Não Iniciado',
-    '1H': '1º Tempo',
-    'HT': 'Intervalo',
-    '2H': '2º Tempo',
-    'FT': 'Encerrado',
-    'AET': 'Prorrogação',
-    'PEN': 'Pênaltis',
-    'P': 'Adiado',
-    'CANC': 'Cancelado'
+    'NS': 'Não Iniciado', '1H': '1º Tempo', 'HT': 'Intervalo',
+    '2H': '2º Tempo', 'FT': 'Encerrado', 'AET': 'Prorrogação',
+    'PEN': 'Pênaltis', 'P': 'Adiado', 'CANC': 'Cancelado'
 }
 
 @st.cache_data(ttl=3600)
@@ -81,11 +117,6 @@ def carregar_jogos_por_data(data_alvo):
         return []
 
 def salvar_no_supabase(df_jogos):
-    if not supabase:
-        st.error("Erro na conexão com o Supabase.")
-        return
-    
-    # Prepara a lista de dicionários ajustando as chaves para minúsculas
     registros = []
     for item in df_jogos.to_dict(orient="records"):
         registros.append({
@@ -101,27 +132,25 @@ def salvar_no_supabase(df_jogos):
 
     try:
         supabase.table("jogos").insert(registros).execute()
-        st.success(f"✅ {len(registros)} jogos salvos no Supabase com sucesso!")
+        st.success(f"✅ {len(registros)} jogos salvos no banco com sucesso!")
     except Exception as e:
-        st.error(f"Erro ao salvar no Supabase: {e}")
+        st.error(f"Erro ao salvar: {e}")
 
 def buscar_do_supabase():
-    if not supabase:
-        return []
     try:
         res = supabase.table("jogos").select("*").order("created_at", desc=True).execute()
         return res.data
     except Exception as e:
-        st.error(f"Erro ao buscar do Supabase: {e}")
+        st.error(f"Erro ao buscar dados: {e}")
         return []
 
-# ----- INTERFACE -----
-st.title("⚽ Grade de Jogos & Banco Supabase")
+# ----- INTERFACE PRINCIPAL -----
+st.title("⚽ Grade de Jogos - Área do Usuário")
 
-aba1, aba2 = st.tabs(["📅 Jogos da API", "💾 Jogos Salvos no Supabase"])
+aba1, aba2 = st.tabs(["📅 Jogos da API", "💾 Salvos no Supabase"])
 
 with aba1:
-    st.markdown("Selecione **até 3 datas** para carregar os jogos:")
+    st.markdown("Selecione **até 3 datas** para consultar os jogos:")
     hoje = datetime.now()
     dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
 
@@ -138,7 +167,7 @@ with aba1:
         max_selections=3
     )
 
-    if st.button("Atualizar Busca da API"):
+    if st.button("Atualizar Busca"):
         st.cache_data.clear()
 
     if datas_selecionadas:
@@ -150,7 +179,6 @@ with aba1:
         if todos_jogos:
             df = pd.DataFrame(todos_jogos)
 
-            # Filtros
             col1, col2, col3 = st.columns(3)
             with col1:
                 pais_sel = st.selectbox("País", ["Todos"] + sorted(list(df["País"].unique())))
@@ -172,8 +200,7 @@ with aba1:
 
             st.dataframe(df_fil, use_container_width=True)
 
-            # Botão para salvar os jogos filtrados no Supabase
-            if st.button("💾 Salvar Tabela Exibida no Supabase"):
+            if st.button("💾 Salvar Tabela no Supabase"):
                 salvar_no_supabase(df_fil)
 
 with aba2:
@@ -184,4 +211,4 @@ with aba2:
             df_bd = pd.DataFrame(dados_bd)
             st.dataframe(df_bd[['data', 'pais', 'liga', 'horario', 'status', 'mandante', 'placar', 'visitante']], use_container_width=True)
         else:
-            st.info("Nenhum registro encontrado no Supabase.")
+            st.info("Nenhum registro encontrado.")
