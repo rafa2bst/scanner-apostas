@@ -8,7 +8,7 @@ from datetime import datetime
 # CONFIGURAÇÕES DA PÁGINA
 # ==========================================
 st.set_page_config(
-    page_title="Scanner de Apostas - v1.4",
+    page_title="Scanner de Apostas - v1.5",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -17,7 +17,7 @@ st.set_page_config(
 # ==========================================
 # CONTROLE DE VERSÃO DO APLICATIVO
 # ==========================================
-APP_VERSION = "v1.4"
+APP_VERSION = "v1.5"
 
 # ==========================================
 # CONFIGURAÇÕES DE API / SECRETS
@@ -44,23 +44,21 @@ if 'usuario' not in st.session_state:
 @st.cache_data(ttl=300)
 def carregar_jogos_do_dia(data_str):
     """
-    Busca as partidas do dia na API-Sports especificando fuso do Brasil.
-    Em caso de falha, aciona o fallback para o Sofascore.
+    Busca as partidas do dia na API-Sports (fuso America/Sao_Paulo).
+    Se falhar ou não retornar dados, aciona o fallback via cloudscraper no Sofascore.
     """
     jogos = []
     
     # 1. TENTATIVA VIA API-SPORTS
     try:
         url = f"{BASE_URL}/fixtures?date={data_str}&timezone=America/Sao_Paulo"
-        response = requests.get(url, headers=HEADERS, timeout=10)
+        response = requests.get(url, headers=HEADERS, timeout=8)
         
         if response.status_code == 200:
             res_json = response.json()
             errors = res_json.get('errors', {})
             
-            if errors and len(errors) > 0:
-                st.warning(f"⚠️ Aviso da API-Sports: {errors}")
-            else:
+            if not errors and res_json.get('response'):
                 fixtures = res_json.get('response', [])
                 for f in fixtures:
                     status = f['fixture']['status']['short']
@@ -78,39 +76,42 @@ def carregar_jogos_do_dia(data_str):
                         "Status": status,
                         "Fonte": "API-Sports"
                     })
-    except Exception as e:
-        st.error(f"Erro ao conectar com API-Sports: {e}")
+                if jogos:
+                    return pd.DataFrame(jogos)
+    except Exception:
+        pass
 
-    # 2. FALLBACK VIA SOFASCORE (CASO RETORNE VAZIO)
-    if not jogos:
-        try:
-            url_sofa = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{data_str}"
-            headers_sofa = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-            }
-            res_sofa = requests.get(url_sofa, headers=headers_sofa, timeout=10)
-            
-            if res_sofa.status_code == 200:
-                events = res_sofa.json().get('events', [])
-                for ev in events:
-                    timestamp = ev.get('startTimestamp')
-                    hora_str = datetime.fromtimestamp(timestamp).strftime("%H:%M") if timestamp else "N/A"
-                    gols_h = ev.get('homeScore', {}).get('current')
-                    gols_a = ev.get('awayScore', {}).get('current')
-                    placar = f"{gols_h} x {gols_a}" if gols_h is not None and gols_a is not None else "v"
-                    
-                    jogos.append({
-                        "Hora": hora_str,
-                        "País": ev.get('tournament', {}).get('category', {}).get('name', 'N/A'),
-                        "Liga": ev.get('tournament', {}).get('name', 'N/A'),
-                        "Mandante": ev.get('homeTeam', {}).get('name', ''),
-                        "Placar": placar,
-                        "Visitante": ev.get('awayTeam', {}).get('name', ''),
-                        "Status": ev.get('status', {}).get('type', 'NS'),
-                        "Fonte": "Sofascore"
-                    })
-        except Exception:
-            pass
+    # 2. FALLBACK VIA SOFASCORE (CLOUDSCRAPER)
+    try:
+        scraper = cloudscraper.create_scraper()
+        headers_sofa = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7'
+        }
+        url_sofa = f"https://api.sofascore.com/api/v1/sport/football/scheduled-events/{data_str}"
+        res_sofa = scraper.get(url_sofa, headers=headers_sofa, timeout=10)
+        
+        if res_sofa.status_code == 200:
+            events = res_sofa.json().get('events', [])
+            for ev in events:
+                timestamp = ev.get('startTimestamp')
+                hora_str = datetime.fromtimestamp(timestamp).strftime("%H:%M") if timestamp else "N/A"
+                gols_h = ev.get('homeScore', {}).get('current')
+                gols_a = ev.get('awayScore', {}).get('current')
+                placar = f"{gols_h} x {gols_a}" if gols_h is not None and gols_a is not None else "v"
+                
+                jogos.append({
+                    "Hora": hora_str,
+                    "País": ev.get('tournament', {}).get('category', {}).get('name', 'N/A'),
+                    "Liga": ev.get('tournament', {}).get('name', 'N/A'),
+                    "Mandante": ev.get('homeTeam', {}).get('name', ''),
+                    "Placar": placar,
+                    "Visitante": ev.get('awayTeam', {}).get('name', ''),
+                    "Status": ev.get('status', {}).get('type', 'NS'),
+                    "Fonte": "Sofascore"
+                })
+    except Exception as e:
+        st.error(f"Erro ao carregar jogos no Sofascore: {e}")
 
     return pd.DataFrame(jogos)
 
@@ -120,7 +121,7 @@ def carregar_jogos_do_dia(data_str):
 @st.cache_data(ttl=300)
 def carregar_ultimos_10_jogos(nome_time):
     """
-    Tenta buscar os últimos 10 jogos no Sofascore via cloudscraper.
+    Busca os últimos 10 jogos no Sofascore via cloudscraper.
     Se falhar, recorre à API-Sports como garantia.
     """
     # 1. TENTATIVA VIA SOFASCORE (CLOUDSCRAPER)
@@ -262,11 +263,11 @@ if "Grade Geral" in opcao:
         df_jogos = carregar_jogos_do_dia(data_str)
         
         if not df_jogos.empty:
-            st.success(f"Encontrados **{len(df_jogos)}** jogos para {data_consulta.strftime('%d/%m/%Y')}:")
+            st.success(f"Encontrados **{len(df_jogos)}** jogos para {data_consulta.strftime('%d/%m/%Y')} (Fonte: {df_jogos['Fonte'].iloc[0]}):")
             
             col_f1, col_f2 = st.columns(2)
             with col_f1:
-                ligas_disponiveis = ["Todas"] + sorted(list(df_jogos['Liga'].unique()))
+                ligas_disponiveis = ["Todas"] + sorted(list(df_jogos['Liga'].dropna().unique()))
                 liga_selecionada = st.selectbox("Filtrar por Campeonato:", ligas_disponiveis)
             with col_f2:
                 busca_time = st.text_input("Buscar Time:", placeholder="Digite o nome do time...")
