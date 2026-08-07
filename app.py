@@ -122,7 +122,7 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
-# FUNÇÃO DE ANÁLISE USANDO A IA (OS 13 PONTOS)
+# FUNÇÃO DE ANÁLISE USANDO A IA (13 PONTOS) - COM NOME DO MODELO CORRIGIDO
 def gerar_analise_ia(dados_jogo):
     prompt = f"""
     Você é um especialista tático e estatístico em apostas esportivas.
@@ -152,7 +152,7 @@ def gerar_analise_ia(dados_jogo):
     3- Mercado mais seguro
     4- Nível de confiança de 0 a 10 (justificado)
     """
-    model = genai.GenerativeModel("gemini-2.5-flash")
+    model = genai.GenerativeModel("gemini-1.5-flash")
     response = model.generate_content(prompt)
     return response.text
 
@@ -213,7 +213,6 @@ with aba1:
             # SEÇÃO DE GERAR ANÁLISE COM A IA
             st.subheader("🔍 Gerar Análise Pré-Jogo (13 Pontos)")
             
-            # Cria lista de partidas no formato "Mandante x Visitante"
             lista_partidas = [f"{row['Mandante']} x {row['Visitante']} ({row['Data']})" for _, row in df_fil.iterrows()]
             
             if lista_partidas:
@@ -221,7 +220,6 @@ with aba1:
                 
                 if st.button("🤖 Gerar Análise Detalhada com IA"):
                     with st.spinner("A IA está analisando os 13 pontos da partida... Aguarde uns segundos."):
-                        # Recupera o dicionário do jogo selecionado
                         idx = lista_partidas.index(partida_escolhida)
                         jogo_dados = df_fil.iloc[idx].to_dict()
                         
