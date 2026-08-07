@@ -83,6 +83,13 @@ menu_opcao = st.sidebar.radio(
 )
 
 st.sidebar.divider()
+
+# Botão para limpar cache e atualizar dados manualmente
+if st.sidebar.button("🔄 Atualizar Dados Agora"):
+    st.cache_data.clear()
+    st.sidebar.success("Cache limpo! Recarregando...")
+    st.rerun()
+
 if st.sidebar.button("🚪 Sair (Logout)"):
     fazer_logout()
 
@@ -97,8 +104,8 @@ STATUS_MAP = {
     'PEN': 'Pênaltis', 'P': 'Adiado', 'CANC': 'Cancelado'
 }
 
-# Funções da API
-@st.cache_data(ttl=3600)
+# Funções da API com Cache reduzido (5 minutos) para garantir dados recentes
+@st.cache_data(ttl=300)
 def carregar_jogos_por_data(data_alvo):
     url = f"{BASE_URL}/fixtures?date={data_alvo}"
     try:
@@ -140,8 +147,9 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
-@st.cache_data(ttl=3600)
+@st.cache_data(ttl=300)
 def carregar_ultimos_10_jogos(team_id):
+    # Força a busca das últimas 10 partidas finalizadas
     url = f"{BASE_URL}/fixtures?team={team_id}&last=10"
     try:
         response = requests.get(url, headers=HEADERS)
@@ -207,7 +215,7 @@ def gerar_analise_ia(dados_jogo, hist_home, hist_away):
     response = model.generate_content(prompt)
     return response.text
 
-# ----- CARREGAMENTO DE DATAS -----
+# ----- CARREGAMENTO DINÂMICO DE DATAS -----
 hoje = datetime.now()
 dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
 opcoes_datas = {
@@ -231,7 +239,7 @@ if menu_opcao == "📅 Grade Geral de Jogos":
 
     if datas_selecionadas:
         todos_jogos = []
-        with st.spinner("Buscando partidas..."):
+        with st.spinner("Buscando partidas mais recentes..."):
             for data in datas_selecionadas:
                 todos_jogos.extend(carregar_jogos_por_data(data))
 
@@ -276,7 +284,7 @@ elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
         
         partida_sel = st.selectbox("Selecione a partida para visualizar o histórico:", lista_opcoes)
         
-        if st.button("🔎 Carregar Histórico dos 10 Jogos"):
+        if st.button("🔎 Carregar Histórico Atualizado"):
             idx = lista_opcoes.index(partida_sel)
             jogo_info = df_j.iloc[idx]
             
@@ -284,7 +292,7 @@ elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
             
             with col_a:
                 st.subheader(f"🏠 {jogo_info['Mandante']} - ÚLTIMOS 10 JOGOS")
-                with st.spinner(f"Buscando histórico do {jogo_info['Mandante']}..."):
+                with st.spinner(f"Buscando jogos recentes de {jogo_info['Mandante']}..."):
                     h_mandante = carregar_ultimos_10_jogos(jogo_info['ID_Mandante'])
                     if h_mandante:
                         st.dataframe(pd.DataFrame(h_mandante), use_container_width=True)
@@ -293,7 +301,7 @@ elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
 
             with col_b:
                 st.subheader(f"🚀 {jogo_info['Visitante']} - ÚLTIMOS 10 JOGOS")
-                with st.spinner(f"Buscando histórico do {jogo_info['Visitante']}..."):
+                with st.spinner(f"Buscando jogos recentes de {jogo_info['Visitante']}..."):
                     h_visitante = carregar_ultimos_10_jogos(jogo_info['ID_Visitante'])
                     if h_visitante:
                         st.dataframe(pd.DataFrame(h_visitante), use_container_width=True)
@@ -323,7 +331,7 @@ elif menu_opcao == "🔍 Análise Pré-Jogo (IA)":
             idx = lista_ia.index(partida_ia)
             jogo_dados = df_ia.iloc[idx].to_dict()
             
-            with st.spinner("Coletando últimos 10 jogos e gerando análise com IA..."):
+            with st.spinner("Buscando dados recentes e gerando análise..."):
                 h_mand = carregar_ultimos_10_jogos(jogo_dados['ID_Mandante'])
                 h_vis = carregar_ultimos_10_jogos(jogo_dados['ID_Visitante'])
                 
