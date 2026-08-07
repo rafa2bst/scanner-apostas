@@ -2,15 +2,29 @@ import streamlit as st
 import requests
 import pandas as pd
 from datetime import datetime, timedelta
+from supabase import create_client, Client
 
 # Configurações da página
 st.set_page_config(
-    page_title="Grade de Jogos - Múltiplas Datas",
+    page_title="Grade de Jogos + Supabase",
     page_icon="⚽",
     layout="wide"
 )
 
-# Configurações da API
+# Conexão com o Supabase
+@st.cache_resource
+def init_supabase():
+    try:
+        url = st.secrets["SUPABASE_URL"]
+        key = st.secrets["SUPABASE_KEY"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error("Chaves do Supabase não configuradas nos Secrets do Streamlit.")
+        return None
+
+supabase = init_supabase()
+
+# Configurações da API de Futebol
 API_KEY = "17948bfd5d3ed61ae0cb0aa7a97f5e09"
 BASE_URL = "https://v3.football.api-sports.io"
 HEADERS = {"x-apisports-key": API_KEY}
@@ -29,7 +43,6 @@ STATUS_MAP = {
 
 @st.cache_data(ttl=3600)
 def carregar_jogos_por_data(data_alvo):
-    """Busca todos os jogos do mundo para uma data específica (1 requisição)."""
     url = f"{BASE_URL}/fixtures?date={data_alvo}"
     try:
         response = requests.get(url, headers=HEADERS)
@@ -50,8 +63,6 @@ def carregar_jogos_por_data(data_alvo):
             gols_home = fixture['goals']['home'] if fixture['goals']['home'] is not None else '-'
             gols_away = fixture['goals']['away'] if fixture['goals']['away'] is not None else '-'
             placar = f"{gols_home} x {gols_away}" if status_code != 'NS' else "v"
-
-            # Formata a data para exibição (DD/MM/YYYY)
             data_formatada = datetime.strptime(data_alvo, "%Y-%m-%d").strftime("%d/%m/%Y")
 
             lista_jogos.append({
@@ -69,98 +80,108 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
-# ----- INTERFACE -----
-st.title("📅 Grade de Jogos — Múltiplas Datas")
-st.markdown("Selecione **até 3 datas** na barra lateral para carregar a grade completa de jogos.")
-
-# Opções de datas (Hoje e os próximos 6 dias)
-hoje = datetime.now()
-dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
-
-# Cria um dicionário com rótulos amigáveis ("2026-08-08": "08/08/2026 (Amanhã)")
-opcoes_datas = {
-    d.strftime("%Y-%m-%d"): f"{d.strftime('%d/%m/%Y')} ({'Hoje' if i==0 else 'Amanhã' if i==1 else d.strftime('%a')})"
-    for i, d in enumerate(dias_disponiveis)
-}
-
-# Seletor de no máximo 3 datas
-datas_selecionadas = st.sidebar.multiselect(
-    "Selecione no máximo 3 datas:",
-    options=list(opcoes_datas.keys()),
-    default=list(opcoes_datas.keys())[:3], # Por padrão seleciona Hoje, Amanhã e Depois
-    format_func=lambda x: opcoes_datas[x],
-    max_selections=3
-)
-
-if st.sidebar.button("Atualizar Jogos"):
-    st.cache_data.clear()
-
-st.divider()
-
-if not datas_selecionadas:
-    st.warning("⚠️ Escolha pelo menos 1 data na barra lateral esquerda.")
-else:
-    todos_jogos = []
+def salvar_no_supabase(df_jogos):
+    if not supabase:
+        st.error("Erro na conexão com o Supabase.")
+        return
     
-    with st.spinner(f"Buscando partidas para {len(datas_selecionadas)} data(s)..."):
-        for data in datas_selecionadas:
-            jogos_da_data = carregar_jogos_por_data(data)
-            todos_jogos.extend(jogos_da_data)
+    # Prepara a lista de dicionários ajustando as chaves para minúsculas
+    registros = []
+    for item in df_jogos.to_dict(orient="records"):
+        registros.append({
+            "data": item["Data"],
+            "pais": item["País"],
+            "liga": item["Liga"],
+            "horario": item["Horário"],
+            "status": item["Status"],
+            "mandante": item["Mandante"],
+            "placar": item["Placar"],
+            "visitante": item["Visitante"]
+        })
 
-    if todos_jogos:
-        df = pd.DataFrame(todos_jogos)
+    try:
+        supabase.table("jogos").insert(registros).execute()
+        st.success(f"✅ {len(registros)} jogos salvos no Supabase com sucesso!")
+    except Exception as e:
+        st.error(f"Erro ao salvar no Supabase: {e}")
 
-        # Filtros no topo da tabela
-        col1, col2, col3, col4 = st.columns([1, 1, 1, 2])
+def buscar_do_supabase():
+    if not supabase:
+        return []
+    try:
+        res = supabase.table("jogos").select("*").order("created_at", desc=True).execute()
+        return res.data
+    except Exception as e:
+        st.error(f"Erro ao buscar do Supabase: {e}")
+        return []
 
-        with col1:
-            datas_unicas = ["Todas"] + sorted(list(df["Data"].unique()))
-            data_filtro = st.selectbox("Filtrar Data", datas_unicas)
+# ----- INTERFACE -----
+st.title("⚽ Grade de Jogos & Banco Supabase")
 
-        with col2:
-            paises = ["Todos"] + sorted(list(df["País"].unique()))
-            pais_selecionado = st.selectbox("Filtrar País", paises)
+aba1, aba2 = st.tabs(["📅 Jogos da API", "💾 Jogos Salvos no Supabase"])
 
-        with col3:
-            if pais_selecionado != "Todos":
-                ligas_disponiveis = ["Todas"] + sorted(list(df[df["País"] == pais_selecionado]["Liga"].unique()))
-            else:
-                ligas_disponiveis = ["Todas"] + sorted(list(df["Liga"].unique()))
-            liga_selecionada = st.selectbox("Filtrar Liga", ligas_disponiveis)
+with aba1:
+    st.markdown("Selecione **até 3 datas** para carregar os jogos:")
+    hoje = datetime.now()
+    dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
 
-        with col4:
-            termo_busca = st.text_input("Buscar Time", placeholder="Digite o nome de um time...")
+    opcoes_datas = {
+        d.strftime("%Y-%m-%d"): f"{d.strftime('%d/%m/%Y')} ({'Hoje' if i==0 else 'Amanhã' if i==1 else d.strftime('%a')})"
+        for i, d in enumerate(dias_disponiveis)
+    }
 
-        # Aplicação dos Filtros
-        df_filtrado = df.copy()
+    datas_selecionadas = st.multiselect(
+        "Datas:",
+        options=list(opcoes_datas.keys()),
+        default=list(opcoes_datas.keys())[:3],
+        format_func=lambda x: opcoes_datas[x],
+        max_selections=3
+    )
 
-        if data_filtro != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Data"] == data_filtro]
+    if st.button("Atualizar Busca da API"):
+        st.cache_data.clear()
 
-        if pais_selecionado != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["País"] == pais_selecionado]
+    if datas_selecionadas:
+        todos_jogos = []
+        with st.spinner("Buscando partidas..."):
+            for data in datas_selecionadas:
+                todos_jogos.extend(carregar_jogos_por_data(data))
 
-        if liga_selecionada != "Todas":
-            df_filtrado = df_filtrado[df_filtrado["Liga"] == liga_selecionada]
+        if todos_jogos:
+            df = pd.DataFrame(todos_jogos)
 
-        if termo_busca:
-            df_filtrado = df_filtrado[
-                df_filtrado["Mandante"].str.contains(termo_busca, case=False, na=False) |
-                df_filtrado["Visitante"].str.contains(termo_busca, case=False, na=False)
-            ]
+            # Filtros
+            col1, col2, col3 = st.columns(3)
+            with col1:
+                pais_sel = st.selectbox("País", ["Todos"] + sorted(list(df["País"].unique())))
+            with col2:
+                liga_sel = st.selectbox("Liga", ["Todas"] + sorted(list(df["Liga"].unique())))
+            with col3:
+                busca = st.text_input("Time", placeholder="Nome do time...")
 
-        st.caption(f"Exibindo **{len(df_filtrado)}** de **{len(df)}** partidas carregadas.")
+            df_fil = df.copy()
+            if pais_sel != "Todos":
+                df_fil = df_fil[df_fil["País"] == pais_sel]
+            if liga_sel != "Todas":
+                df_fil = df_fil[df_fil["Liga"] == liga_sel]
+            if busca:
+                df_fil = df_fil[
+                    df_fil["Mandante"].str.contains(busca, case=False, na=False) |
+                    df_fil["Visitante"].str.contains(busca, case=False, na=False)
+                ]
 
-        # Exibição da tabela
-        st.dataframe(
-            df_filtrado,
-            use_container_width=True,
-            column_config={
-                "Data": st.column_config.TextColumn("Data", width="small"),
-                "Horário": st.column_config.TextColumn("Horário", width="small"),
-                "Status": st.column_config.TextColumn("Status", width="medium"),
-                "Placar": st.column_config.TextColumn("Placar", width="small"),
-            }
-        )
-    else:
-        st.info("Nenhuma partida encontrada para a(s) data(s) selecionada(s).")
+            st.dataframe(df_fil, use_container_width=True)
+
+            # Botão para salvar os jogos filtrados no Supabase
+            if st.button("💾 Salvar Tabela Exibida no Supabase"):
+                salvar_no_supabase(df_fil)
+
+with aba2:
+    st.subheader("Registros Gravados no Supabase")
+    if st.button("Carregar Dados do Banco"):
+        dados_bd = buscar_do_supabase()
+        if dados_bd:
+            df_bd = pd.DataFrame(dados_bd)
+            st.dataframe(df_bd[['data', 'pais', 'liga', 'horario', 'status', 'mandante', 'placar', 'visitante']], use_container_width=True)
+        else:
+            st.info("Nenhum registro encontrado no Supabase.")
