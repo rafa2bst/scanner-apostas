@@ -3,10 +3,11 @@ import requests
 import pandas as pd
 from datetime import datetime, timedelta
 from supabase import create_client, Client
+import google.generativeai as genai
 
 # Configurações da página
 st.set_page_config(
-    page_title="Scanner de Apostas - Login",
+    page_title="Scanner de Apostas - Análise com IA",
     page_icon="⚽",
     layout="wide"
 )
@@ -19,10 +20,16 @@ def init_supabase():
         key = st.secrets["SUPABASE_KEY"]
         return create_client(url, key)
     except Exception:
-        st.error("Erro nas credenciais do Supabase. Verifique os Secrets no Streamlit Cloud.")
+        st.error("Erro nas credenciais do Supabase nos Secrets.")
         return None
 
 supabase = init_supabase()
+
+# Configuração da IA Gemini
+try:
+    genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+except Exception:
+    st.error("Erro na chave GEMINI_API_KEY nos Secrets.")
 
 # ----- SISTEMA DE AUTENTICAÇÃO -----
 if "user" not in st.session_state:
@@ -34,15 +41,16 @@ def fazer_login(email, password):
         st.session_state.user = res.user
         st.success("Login realizado com sucesso!")
         st.rerun()
-    except Exception as e:
+    except Exception:
         st.error("Erro ao fazer login: E-mail ou senha incorretos.")
 
 def fazer_logout():
-    supabase.auth.sign_out()
+    if supabase:
+        supabase.auth.sign_out()
     st.session_state.user = None
     st.rerun()
 
-# Barra Lateral - Tela de Login
+# Barra Lateral - Login
 st.sidebar.title("🔐 Área Restrita")
 
 if st.session_state.user is None:
@@ -57,10 +65,8 @@ if st.session_state.user is None:
             st.sidebar.warning("Preencha e-mail e senha.")
             
     st.title("🔒 Acesso Restrito")
-    st.info("Por favor, faça login na barra lateral esquerda para acessar o scanner de jogos.")
-    st.stop() # Interrompe a execução do restante da página
-
-# ----- CONTEÚDO PROTEGIDO (EXIBIDO APENAS APÓS LOGIN) -----
+    st.info("Por favor, faça login na barra lateral esquerda para acessar o scanner.")
+    st.stop()
 
 st.sidebar.write(f"👤 Conectado como: **{st.session_state.user.email}**")
 if st.sidebar.button("Sair (Logout)"):
@@ -116,41 +122,46 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
-def salvar_no_supabase(df_jogos):
-    registros = []
-    for item in df_jogos.to_dict(orient="records"):
-        registros.append({
-            "data": item["Data"],
-            "pais": item["País"],
-            "liga": item["Liga"],
-            "horario": item["Horário"],
-            "status": item["Status"],
-            "mandante": item["Mandante"],
-            "placar": item["Placar"],
-            "visitante": item["Visitante"]
-        })
+# FUNÇÃO DE ANÁLISE USANDO A IA (OS 13 PONTOS)
+def gerar_analise_ia(dados_jogo):
+    prompt = f"""
+    Você é um especialista tático e estatístico em apostas esportivas.
+    Analise a partida a seguir: {dados_jogo["Mandante"]} x {dados_jogo["Visitante"]}
+    - Campeonato: {dados_jogo["Liga"]} ({dados_jogo["País"]})
+    - Data/Horário: {dados_jogo["Data"]} às {dados_jogo["Horário"]}
+    - Status: {dados_jogo["Status"]}
 
-    try:
-        supabase.table("jogos").insert(registros).execute()
-        st.success(f"✅ {len(registros)} jogos salvos no banco com sucesso!")
-    except Exception as e:
-        st.error(f"Erro ao salvar: {e}")
+    Gere uma análise minuciosa estruturada estritamente nos 13 tópicos abaixo:
+    1- Momento das equipes
+    2- Necessidade do resultado (Must Win)
+    3- Análise da formação e prováveis escalações
+    4- Linha de frente e desfalques de impacto
+    5- Mando de campo
+    6- Métricas de Expectativa (xG / xGA / Média de gols)
+    7- Confrontos diretos (H2H)
+    8- Estilo de jogo de cada equipe
+    9- Extra campo e bastidores
+    10- Fator clima e gramado
+    11- Perfil do Árbitro
+    12- Curiosidades e notícias de última hora
+    13- Padrão mais recorrente das equipes
 
-def buscar_do_supabase():
-    try:
-        res = supabase.table("jogos").select("*").order("created_at", desc=True).execute()
-        return res.data
-    except Exception as e:
-        st.error(f"Erro ao buscar dados: {e}")
-        return []
+    No final, obrigatoriamente responda:
+    1- Resultado mais provável
+    2- Expectativa de gols
+    3- Mercado mais seguro
+    4- Nível de confiança de 0 a 10 (justificado)
+    """
+    model = genai.GenerativeModel("gemini-2.5-flash")
+    response = model.generate_content(prompt)
+    return response.text
 
 # ----- INTERFACE PRINCIPAL -----
-st.title("⚽ Grade de Jogos - Área do Usuário")
+st.title("⚽ Grade de Jogos & Analisador com IA")
 
-aba1, aba2 = st.tabs(["📅 Jogos da API", "💾 Salvos no Supabase"])
+aba1, aba2 = st.tabs(["📅 Jogos & Análise com IA", "💾 Histórico no Supabase"])
 
 with aba1:
-    st.markdown("Selecione **até 3 datas** para consultar os jogos:")
     hoje = datetime.now()
     dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
 
@@ -160,15 +171,12 @@ with aba1:
     }
 
     datas_selecionadas = st.multiselect(
-        "Datas:",
+        "Selecione até 3 datas:",
         options=list(opcoes_datas.keys()),
         default=list(opcoes_datas.keys())[:3],
         format_func=lambda x: opcoes_datas[x],
         max_selections=3
     )
-
-    if st.button("Atualizar Busca"):
-        st.cache_data.clear()
 
     if datas_selecionadas:
         todos_jogos = []
@@ -200,15 +208,27 @@ with aba1:
 
             st.dataframe(df_fil, use_container_width=True)
 
-            if st.button("💾 Salvar Tabela no Supabase"):
-                salvar_no_supabase(df_fil)
+            st.divider()
+
+            # SEÇÃO DE GERAR ANÁLISE COM A IA
+            st.subheader("🔍 Gerar Análise Pré-Jogo (13 Pontos)")
+            
+            # Cria lista de partidas no formato "Mandante x Visitante"
+            lista_partidas = [f"{row['Mandante']} x {row['Visitante']} ({row['Data']})" for _, row in df_fil.iterrows()]
+            
+            if lista_partidas:
+                partida_escolhida = st.selectbox("Escolha uma partida da lista acima:", lista_partidas)
+                
+                if st.button("🤖 Gerar Análise Detalhada com IA"):
+                    with st.spinner("A IA está analisando os 13 pontos da partida... Aguarde uns segundos."):
+                        # Recupera o dicionário do jogo selecionado
+                        idx = lista_partidas.index(partida_escolhida)
+                        jogo_dados = df_fil.iloc[idx].to_dict()
+                        
+                        relatorio = gerar_analise_ia(jogo_dados)
+                        st.markdown("---")
+                        st.markdown(relatorio)
 
 with aba2:
-    st.subheader("Registros Gravados no Supabase")
-    if st.button("Carregar Dados do Banco"):
-        dados_bd = buscar_do_supabase()
-        if dados_bd:
-            df_bd = pd.DataFrame(dados_bd)
-            st.dataframe(df_bd[['data', 'pais', 'liga', 'horario', 'status', 'mandante', 'placar', 'visitante']], use_container_width=True)
-        else:
-            st.info("Nenhum registro encontrado.")
+    st.subheader("Registros Salvos")
+    st.info("Espaço reservado para consultar análises salvas no banco Supabase.")
