@@ -7,7 +7,7 @@ import google.generativeai as genai
 
 # Configurações da página
 st.set_page_config(
-    page_title="Scanner de Apostas - Menu Hambúrguer",
+    page_title="Scanner de Apostas - Painel Completo",
     page_icon="⚽",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -65,16 +65,21 @@ if st.session_state.user is None:
             st.sidebar.warning("Preencha e-mail e senha.")
             
     st.title("🔒 Acesso Restrito")
-    st.info("Por favor, faça login na barra lateral para acessar a aplicação.")
+    st.info("Por favor, faça login na barra lateral para acessar o scanner.")
     st.stop()
 
 # ----- MENU LATERAL (HAMBÚRGUER) -----
-st.sidebar.title("☰ Navegação")
+st.sidebar.title("☰ Menu")
 st.sidebar.caption(f"👤 Conectado: **{st.session_state.user.email}**")
 
 menu_opcao = st.sidebar.radio(
-    "Ir para:",
-    ["📅 Grade de Jogos", "🔍 Análise Pré-Jogo (IA)", "💾 Histórico Supabase"]
+    "Navegação:",
+    [
+        "📅 Grade Geral de Jogos", 
+        "📊 Histórico & Estatísticas (10 Jogos)", 
+        "🔍 Análise Pré-Jogo (IA)", 
+        "💾 Banco de Dados Supabase"
+    ]
 )
 
 st.sidebar.divider()
@@ -92,6 +97,7 @@ STATUS_MAP = {
     'PEN': 'Pênaltis', 'P': 'Adiado', 'CANC': 'Cancelado'
 }
 
+# Funções da API
 @st.cache_data(ttl=3600)
 def carregar_jogos_por_data(data_alvo):
     url = f"{BASE_URL}/fixtures?date={data_alvo}"
@@ -117,6 +123,9 @@ def carregar_jogos_por_data(data_alvo):
             data_formatada = datetime.strptime(data_alvo, "%Y-%m-%d").strftime("%d/%m/%Y")
 
             lista_jogos.append({
+                "ID_Partida": fixture['fixture']['id'],
+                "ID_Mandante": fixture['teams']['home']['id'],
+                "ID_Visitante": fixture['teams']['away']['id'],
                 "Data": data_formatada,
                 "País": fixture['league']['country'],
                 "Liga": fixture['league']['name'],
@@ -131,13 +140,47 @@ def carregar_jogos_por_data(data_alvo):
     except Exception:
         return []
 
-def gerar_analise_ia(dados_jogo):
+@st.cache_data(ttl=3600)
+def carregar_ultimos_10_jogos(team_id):
+    url = f"{BASE_URL}/fixtures?team={team_id}&last=10"
+    try:
+        response = requests.get(url, headers=HEADERS)
+        if response.status_code != 200:
+            return []
+
+        dados = response.json()
+        partidas = dados.get('response', [])
+        historico = []
+
+        for fixture in partidas:
+            data_jogo = datetime.strptime(fixture['fixture']['date'][:10], "%Y-%m-%d").strftime("%d/%m/%Y")
+            gols_h = fixture['goals']['home'] if fixture['goals']['home'] is not None else 0
+            gols_a = fixture['goals']['away'] if fixture['goals']['away'] is not None else 0
+            
+            historico.append({
+                "Data": data_jogo,
+                "Competição": fixture['league']['name'],
+                "Mandante": fixture['teams']['home']['name'],
+                "Placar": f"{gols_h} x {gols_a}",
+                "Visitante": fixture['teams']['away']['name']
+            })
+        return historico
+    except Exception:
+        return []
+
+def gerar_analise_ia(dados_jogo, hist_home, hist_away):
     prompt = f"""
     Você é um especialista tático e estatístico em apostas esportivas.
     Analise a partida a seguir: {dados_jogo["Mandante"]} x {dados_jogo["Visitante"]}
     - Campeonato: {dados_jogo["Liga"]} ({dados_jogo["País"]})
     - Data/Horário: {dados_jogo["Data"]} às {dados_jogo["Horário"]}
     - Status: {dados_jogo["Status"]}
+
+    Últimos 10 jogos do Mandante ({dados_jogo["Mandante"]}):
+    {hist_home}
+
+    Últimos 10 jogos do Visitante ({dados_jogo["Visitante"]}):
+    {hist_away}
 
     Gere uma análise minuciosa estruturada estritamente nos 13 tópicos abaixo:
     1- Momento das equipes
@@ -164,23 +207,24 @@ def gerar_analise_ia(dados_jogo):
     response = model.generate_content(prompt)
     return response.text
 
-# ----- CARREGAMENTO GLOBAL DAS DATAS -----
+# ----- CARREGAMENTO DE DATAS -----
 hoje = datetime.now()
 dias_disponiveis = [hoje + timedelta(days=i) for i in range(7)]
-
 opcoes_datas = {
     d.strftime("%Y-%m-%d"): f"{d.strftime('%d/%m/%Y')} ({'Hoje' if i==0 else 'Amanhã' if i==1 else d.strftime('%a')})"
     for i, d in enumerate(dias_disponiveis)
 }
 
-# ----- PÁGINA 1: GRADE DE JOGOS -----
-if menu_opcao == "📅 Grade de Jogos":
-    st.title("⚽ Grade de Jogos")
+# ==========================================
+# PÁGINA 1: GRADE GERAL DE JOGOS
+# ==========================================
+if menu_opcao == "📅 Grade Geral de Jogos":
+    st.title("⚽ Grade Geral de Jogos")
     
     datas_selecionadas = st.multiselect(
-        "Selecione até 3 datas:",
+        "Selecione as datas para consultar:",
         options=list(opcoes_datas.keys()),
-        default=list(opcoes_datas.keys())[:3],
+        default=list(opcoes_datas.keys())[:2],
         format_func=lambda x: opcoes_datas[x],
         max_selections=3
     )
@@ -213,35 +257,85 @@ if menu_opcao == "📅 Grade de Jogos":
                     df_fil["Visitante"].str.contains(busca, case=False, na=False)
                 ]
 
-            st.dataframe(df_fil, use_container_width=True)
+            st.dataframe(df_fil[["Data", "Horário", "País", "Liga", "Mandante", "Placar", "Visitante", "Status"]], use_container_width=True)
 
-# ----- PÁGINA 2: ANÁLISE PRÉ-JOGO (IA) -----
-elif menu_opcao == "🔍 Análise Pré-Jogo (IA)":
-    st.title("🔍 Análise de Partida com Inteligência Artificial")
+# ==========================================
+# PÁGINA 2: HISTÓRICO DOS ÚLTIMOS 10 JOGOS
+# ==========================================
+elif menu_opcao == "📊 Histórico & Estatísticas (10 Jogos)":
+    st.title("📊 Histórico dos ÚLTIMOS 10 JOGOS das Equipes")
 
-    data_analise = st.selectbox("Escolha a data da partida:", list(opcoes_datas.keys()), format_func=lambda x: opcoes_datas[x])
+    data_sel = st.selectbox("Escolha a data do confronto:", list(opcoes_datas.keys()), format_func=lambda x: opcoes_datas[x])
     
-    with st.spinner("Carregando jogos para análise..."):
-        jogos_analise = carregar_jogos_por_data(data_analise)
+    with st.spinner("Buscando jogos da data selecionada..."):
+        jogos_data = carregar_jogos_por_data(data_sel)
 
-    if jogos_analise:
-        df_a = pd.DataFrame(jogos_analise)
-        lista_partidas = [f"{row['Mandante']} x {row['Visitante']} ({row['Liga']})" for _, row in df_a.iterrows()]
+    if jogos_data:
+        df_j = pd.DataFrame(jogos_data)
+        lista_opcoes = [f"{row['Mandante']} x {row['Visitante']} ({row['Liga']})" for _, row in df_j.iterrows()]
         
-        partida_escolhida = st.selectbox("Escolha a partida:", lista_partidas)
+        partida_sel = st.selectbox("Selecione a partida para visualizar o histórico:", lista_opcoes)
         
-        if st.button("🤖 Gerar Relatório Completo (13 Pontos)"):
-            with st.spinner("A IA está processando as estatísticas..."):
-                idx = lista_partidas.index(partida_escolhida)
-                jogo_dados = df_a.iloc[idx].to_dict()
+        if st.button("🔎 Carregar Histórico dos 10 Jogos"):
+            idx = lista_opcoes.index(partida_sel)
+            jogo_info = df_j.iloc[idx]
+            
+            col_a, col_b = st.columns(2)
+            
+            with col_a:
+                st.subheader(f"🏠 {jogo_info['Mandante']} - ÚLTIMOS 10 JOGOS")
+                with st.spinner(f"Buscando histórico do {jogo_info['Mandante']}..."):
+                    h_mandante = carregar_ultimos_10_jogos(jogo_info['ID_Mandante'])
+                    if h_mandante:
+                        st.dataframe(pd.DataFrame(h_mandante), use_container_width=True)
+                    else:
+                        st.info("Histórico não encontrado.")
+
+            with col_b:
+                st.subheader(f"🚀 {jogo_info['Visitante']} - ÚLTIMOS 10 JOGOS")
+                with st.spinner(f"Buscando histórico do {jogo_info['Visitante']}..."):
+                    h_visitante = carregar_ultimos_10_jogos(jogo_info['ID_Visitante'])
+                    if h_visitante:
+                        st.dataframe(pd.DataFrame(h_visitante), use_container_width=True)
+                    else:
+                        st.info("Histórico não encontrado.")
+    else:
+        st.info("Nenhuma partida encontrada nesta data.")
+
+# ==========================================
+# PÁGINA 3: ANÁLISE PRÉ-JOGO COM IA
+# ==========================================
+elif menu_opcao == "🔍 Análise Pré-Jogo (IA)":
+    st.title("🔍 Análise Completa de Partida com Inteligência Artificial")
+
+    data_a = st.selectbox("Data da partida:", list(opcoes_datas.keys()), format_func=lambda x: opcoes_datas[x])
+    
+    with st.spinner("Carregando jogos..."):
+        jogos_a = carregar_jogos_por_data(data_a)
+
+    if jogos_a:
+        df_ia = pd.DataFrame(jogos_a)
+        lista_ia = [f"{row['Mandante']} x {row['Visitante']} ({row['Liga']})" for _, row in df_ia.iterrows()]
+        
+        partida_ia = st.selectbox("Escolha o jogo para gerar a análise de 13 pontos:", lista_ia)
+        
+        if st.button("🤖 Gerar Relatório Tático com IA"):
+            idx = lista_ia.index(partida_ia)
+            jogo_dados = df_ia.iloc[idx].to_dict()
+            
+            with st.spinner("Coletando últimos 10 jogos e gerando análise com IA..."):
+                h_mand = carregar_ultimos_10_jogos(jogo_dados['ID_Mandante'])
+                h_vis = carregar_ultimos_10_jogos(jogo_dados['ID_Visitante'])
                 
-                relatorio = gerar_analise_ia(jogo_dados)
+                relatorio = gerar_analise_ia(jogo_dados, h_mand, h_vis)
                 st.markdown("---")
                 st.markdown(relatorio)
     else:
-        st.info("Nenhuma partida encontrada para essa data.")
+        st.info("Nenhum jogo encontrado para esta data.")
 
-# ----- PÁGINA 3: HISTÓRICO SUPABASE -----
-elif menu_opcao == "💾 Histórico Supabase":
-    st.title("💾 Registros Gravados no Banco")
-    st.info("Consulte aqui suas partidas salvas e relatórios salvos no Supabase.")
+# ==========================================
+# PÁGINA 4: BANCO SUPABASE
+# ==========================================
+elif menu_opcao == "💾 Banco de Dados Supabase":
+    st.title("💾 Registros no Banco Supabase")
+    st.info("Espaço reservado para consulta de relatórios e palpites salvos.")
