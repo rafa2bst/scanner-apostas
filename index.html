@@ -1516,7 +1516,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.58";
+const APP_VERSAO = "v4.59";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -5628,13 +5628,14 @@ function mostrarAlerta(a, minutos){
   div.style.cssText = 'position:fixed;top:20px;right:20px;z-index:9999;background:var(--pitch);border:2px solid var(--amber);border-radius:12px;padding:16px 20px;max-width:340px;box-shadow:0 8px 30px rgba(0,0,0,.5);animation:slideIn .3s ease';
   div.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:start;gap:10px">
-      <div>
+      <div style="cursor:pointer" onclick="irParaJogoAlerta(${a.id})" title="Clique para ver este jogo">
         <div style="color:var(--amber);font-weight:700;font-size:15px;margin-bottom:4px">⏰ Jogo em ${minutos} min!</div>
         <div style="color:var(--chalk);font-weight:600">${a.mandante} x ${a.visitante}</div>
         <div style="color:var(--chalk-dim);font-size:13px;margin-top:2px">${a.hora_jogo} · ${a.campeonato||''}</div>
         <div style="color:var(--green);font-size:13px;margin-top:4px">Mercado: <b>${a.mercado_sugerido||'—'}</b></div>
+        <div style="color:var(--amber);font-size:11px;margin-top:6px;text-decoration:underline">👆 clique para ver o jogo</div>
       </div>
-      <button onclick="this.closest('div').parentNode.remove()" style="background:none;border:none;color:var(--chalk-dim);font-size:20px;cursor:pointer;line-height:1">×</button>
+      <button onclick="event.stopPropagation();this.closest('div').parentNode.remove()" style="background:none;border:none;color:var(--chalk-dim);font-size:20px;cursor:pointer;line-height:1">×</button>
     </div>`;
   document.body.appendChild(div);
   // som de alerta (beep simples)
@@ -5642,6 +5643,39 @@ function mostrarAlerta(a, minutos){
   // remove sozinho após 30s
   setTimeout(()=>{ if (div.parentNode) div.remove(); }, 30000);
 }
+
+// leva à aba onde o jogo está listado (Apostas que peguei se pego, senão Histórico) e destaca
+async function irParaJogoAlerta(id){
+  try{
+    const { data: a } = await db.from('analises').select('*').eq('id', id).single();
+    if (!a) return;
+    const pego = a.aposta_feita === true || a.aposta_feita === 1 || a.aposta_feita === 'true';
+    const aba = pego ? 'apostaspeguei' : 'histsug';
+    // abre o grupo Controle e a aba certa
+    const btnAba = document.querySelector(`[data-aba="${aba}"]`);
+    if (btnAba) btnAba.click();
+    // fecha o menu se estiver aberto
+    if (typeof fecharMenu === 'function') fecharMenu();
+    // aguarda a lista renderizar e destaca o jogo
+    setTimeout(() => {
+      const pref = pego ? 'ap' : 'hs';
+      const tabela = $(pref+'-tabela');
+      if (tabela){
+        const linhas = tabela.querySelectorAll('tr');
+        for (const tr of linhas){
+          if (tr.textContent.includes(a.mandante) && tr.textContent.includes(a.visitante)){
+            tr.scrollIntoView({ behavior:'smooth', block:'center' });
+            tr.style.transition = 'background .3s';
+            tr.style.background = 'rgba(255,197,61,.25)';
+            setTimeout(()=>{ tr.style.background = ''; }, 2500);
+            break;
+          }
+        }
+      }
+    }, 900);
+  }catch(_){}
+}
+window.irParaJogoAlerta = irParaJogoAlerta;
 
 // painel de configuração do alerta (aparece no topo do Histórico de Sugestões)
 function renderConfigAlerta(){
