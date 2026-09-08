@@ -1548,7 +1548,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.63";
+const APP_VERSAO = "v4.64";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -3734,6 +3734,7 @@ function fecharJaModal(ev){
 window.fecharJaModal = fecharJaModal;
 
 // abre o modal com os 10 últimos jogos de cada time + os 5 confrontos diretos
+let _jaModalDados = null;
 async function toggleJogosAnteriores(boxId, mandante, mid, visitante, vid, mercado){
   const overlay = $('ja-modal-overlay');
   const alvo = $('ja-modal-conteudo');
@@ -3891,20 +3892,38 @@ async function toggleJogosAnteriores(boxId, mandante, mid, visitante, vid, merca
       chamarEdge(vid ? { acao:'historico', time: visitante, id: vid } : { acao:'historico', time: visitante }),
       (mid && vid) ? chamarEdge({ acao:'confronto_direto', t1: mid, t2: vid, n: 5 }) : Promise.resolve({ jogos: [] }),
     ]);
-    alvo.innerHTML = `
-      <h2 style="margin:0 0 4px;padding-right:40px;font-size:19px">${mandante} <span style="color:var(--chalk-dim);font-size:15px">x</span> ${visitante}</h2>
-      <p style="font-size:12px;color:var(--chalk-dim);margin:0 0 14px">Jogos que embasaram a sugestão de <b style="color:var(--amber)">${mercado||'—'}</b></p>
-      <h3 style="font-size:14px;margin:0 0 8px">📋 Últimos 10 jogos de cada time</h3>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px">
-        ${listaJogos(mandante, mid, rm.jogos)}
-        ${listaJogos(visitante, vid, rv.jogos)}
-      </div>
-      <h3 style="font-size:14px;margin:0 0 8px">⚔️ Últimos confrontos diretos</h3>
-      <div style="background:var(--pitch);border-radius:8px;padding:10px">${listaH2H(rh2h.jogos)}</div>
-      <p style="font-size:10.5px;color:var(--chalk-dim);margin-top:10px">🏠 em casa · ✈️ fora · ▲ muitos gols · ▼ poucos. Placar dos jogos individuais na perspectiva do time.</p>`;
+    // guarda os dados para o filtro casa/fora re-renderizar
+    _jaModalDados = { mandante, mid, visitante, vid, mercado, rmJogos: rm.jogos, rvJogos: rv.jogos, h2h: rh2h.jogos };
+    renderJaModal('todos');
   }catch(e){
     alvo.innerHTML = `<p style="font-size:13px;color:var(--red);padding:12px">Erro ao buscar: ${e.message}</p>`;
   }
+
+  // re-renderiza o conteúdo do modal filtrando casa/fora
+  function renderJaModal(filtro){
+    const d = _jaModalDados;
+    const norm = s => (s||'').toLowerCase();
+    const ehMandante = (g, nome, id) => (id && String(g.mandante_id)===String(id)) || (g.time_era_mandante!==undefined ? g.time_era_mandante : norm(g.mandante)===norm(nome));
+    const filtra = (jogos, nome, id) => {
+      if (filtro==='casa') return (jogos||[]).filter(g => ehMandante(g,nome,id));
+      if (filtro==='fora') return (jogos||[]).filter(g => !ehMandante(g,nome,id));
+      return jogos||[];
+    };
+    const subaba = (id2,label) => `<button class="mini" onclick="renderJaModal('${id2}')" style="${filtro===id2?'border-color:var(--amber);color:var(--amber);font-weight:700':''}">${label}</button>`;
+    alvo.innerHTML = `
+      <h2 style="margin:0 0 4px;padding-right:40px;font-size:19px">${d.mandante} <span style="color:var(--chalk-dim);font-size:15px">x</span> ${d.visitante}</h2>
+      <p style="font-size:12px;color:var(--chalk-dim);margin:0 0 10px">Jogos que embasaram a sugestão de <b style="color:var(--amber)">${d.mercado||'—'}</b></p>
+      <div style="display:flex;gap:8px;margin-bottom:12px">${subaba('todos','Todos')} ${subaba('casa','🏠 Em casa')} ${subaba('fora','✈️ Fora')}</div>
+      <h3 style="font-size:14px;margin:0 0 8px">📋 Últimos jogos ${filtro==='casa'?'em casa':filtro==='fora'?'fora':''}</h3>
+      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:18px">
+        ${listaJogos(d.mandante, d.mid, filtra(d.rmJogos, d.mandante, d.mid))}
+        ${listaJogos(d.visitante, d.vid, filtra(d.rvJogos, d.visitante, d.vid))}
+      </div>
+      <h3 style="font-size:14px;margin:0 0 8px">⚔️ Últimos confrontos diretos</h3>
+      <div style="background:var(--pitch);border-radius:8px;padding:10px">${listaH2H(d.h2h)}</div>
+      <p style="font-size:10.5px;color:var(--chalk-dim);margin-top:10px">🏠 em casa · ✈️ fora · ▲ muitos gols · ▼ poucos. Placar na perspectiva do time. O filtro casa/fora não afeta os confrontos diretos.</p>`;
+  }
+  window.renderJaModal = renderJaModal;
 }
 window.toggleJogosAnteriores = toggleJogosAnteriores;
 
