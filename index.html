@@ -1548,7 +1548,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.62";
+const APP_VERSAO = "v4.63";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -7795,14 +7795,19 @@ async function gerarTendenciaGols(){
   // calcula médias de gols HT e FT de um time a partir do histórico
   function mediasTime(jogos, nome, id){
     const norm = s => (s||'').toLowerCase();
-    const ehM = g => (id && String(g.mandante_id)===String(id)) || norm(g.mandante)===norm(nome);
+    // decide se o time era mandante: usa time_era_mandante (banco), senão id, senão nome
+    const ehM = g => {
+      if (g.time_era_mandante !== undefined) return g.time_era_mandante;
+      if (id && g.mandante_id) return String(g.mandante_id)===String(id);
+      return norm(g.mandante)===norm(nome);
+    };
     let ftFez=0,ftSof=0,htFez=0,htSof=0,nFt=0,nHt=0;
     (jogos||[]).slice(0,10).forEach(g => {
       const m = ehM(g);
       const fFez = m?g.gols_mandante:g.gols_visitante, fSof = m?g.gols_visitante:g.gols_mandante;
-      if (fFez!=null&&fSof!=null){ ftFez+=fFez; ftSof+=fSof; nFt++; }
+      if (fFez!=null&&fSof!=null){ ftFez+=Number(fFez); ftSof+=Number(fSof); nFt++; }
       const hM = m?g.ht_mandante:g.ht_visitante, hA = m?g.ht_visitante:g.ht_mandante;
-      if (hM!=null&&hA!=null){ htFez+=hM; htSof+=hA; nHt++; }
+      if (hM!=null&&hA!=null){ htFez+=Number(hM); htSof+=Number(hA); nHt++; }
     });
     return {
       ftFez: nFt?ftFez/nFt:null, ftSof: nFt?ftSof/nFt:null,
