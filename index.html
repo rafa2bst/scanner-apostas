@@ -270,6 +270,7 @@
         <button data-aba="topdia" title="Os 10 melhores jogos do dia pontuados por mercado (Back favorito, Under 3.5, lays).">🏆 TOP do dia</button>
         <button data-aba="metodo0x0" title="Times que vêm de 0x0 (1 ou 2 seguidos) — tendência de estourar e voltar a marcar gols.">🎯 Método 0x0</button>
         <button data-aba="gols" title="Jogos com tendência de gols — probabilidade de sair gol no 1º tempo (HT) e no jogo todo (FT).">⚽ Tendência de gols</button>
+        <button data-aba="hist0x0" title="Histórico dos jogos salvos pelo Método 0x0 — para validar se a estratégia bate.">🎯 Histórico 0x0</button>
       </div>
     </div>
 
@@ -795,6 +796,41 @@
     <div id="gl-aviso"></div>
     <div id="gl-lista"></div>
   </section>
+
+  <!-- ================= HISTÓRICO MÉTODO 0x0 ================= -->
+  <section id="aba-hist0x0">
+    <h2>🎯 Histórico do Método 0x0</h2>
+    <p style="font-size:14px;color:var(--chalk-dim);margin-bottom:12px">
+      Todos os jogos que você salvou pelo <b>Método 0x0</b>. Aqui você valida se a estratégia bate: atualiza os resultados (green/red) e marca quais você pegou.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;align-items:center">
+      <input type="date" id="h0-data-atualizar" style="width:auto;padding:5px 8px" title="Deixe em branco para atualizar todos, ou escolha um dia">
+      <button class="acao" id="btn-h0-atualizar">🔄 Atualizar resultados</button>
+      <span style="align-self:center;font-size:13px;color:var(--chalk-dim)" id="h0-status"></span>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--chalk-dim);margin-left:auto">
+        Situação:
+        <select id="h0-filtro-situacao" style="width:auto;padding:4px 8px">
+          <option value="todos">Todas</option>
+          <option value="ocorrer">Só as que vão ocorrer</option>
+          <option value="ocorridos">Só as que já ocorreram</option>
+        </select>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--chalk-dim);cursor:pointer">
+        <input type="checkbox" id="h0-filtro-pegas" style="width:auto"> Só as que peguei
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--chalk-dim)">
+        Ordenar:
+        <select id="h0-ordem" style="width:auto;padding:4px 8px">
+          <option value="recente">Mais recentes</option>
+          <option value="hora">Hora do jogo</option>
+        </select>
+      </label>
+    </div>
+    <div id="h0-painel"></div>
+    <div id="h0-aviso"></div>
+    <div class="tabela-scroll"><table id="h0-tabela"></table></div>
+  </section>
+
 
 
 
@@ -1548,7 +1584,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.64";
+const APP_VERSAO = "v4.65";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -1754,6 +1790,8 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   if (b.dataset.aba === 'meusjogos' && typeof listarMeusJogos === 'function'){ listarMeusJogos(); }
   // renderiza Apostas que peguei ao abrir
   if (b.dataset.aba === 'apostaspeguei' && typeof listarApostasPeguei === 'function'){ listarApostasPeguei(); }
+  // renderiza Histórico 0x0 ao abrir
+  if (b.dataset.aba === 'hist0x0' && typeof listarHist0x0 === 'function'){ listarHist0x0(); }
 }));
 function irParaAba(nome){ document.querySelector(`nav button[data-aba="${nome}"]`).click(); }
 
@@ -4194,7 +4232,7 @@ $('btn-atualizar-res').addEventListener('click', () => {
   atualizarResultados(d || null);
 });
 
-async function listarHistSug(pref, origemFixa, soPegasFixo){
+async function listarHistSug(pref, origemFixa, soPegasFixo, filtroMotivo){
   pref = pref || 'hs';
   if (typeof renderConfigAlerta === 'function') renderConfigAlerta();
   const { data, error } = await db.from('analises').select('*')
@@ -4262,6 +4300,7 @@ async function listarHistSug(pref, origemFixa, soPegasFixo){
   }
   const filtroMercado = selMerc ? selMerc.value : '';
   let dataFiltrada = filtroData ? data.filter(a => a.data_jogo === filtroData) : data;
+  if (filtroMotivo) dataFiltrada = dataFiltrada.filter(a => (a.observacoes||'').includes(filtroMotivo));
   // no Histórico (não em Meus jogos), sem filtro de data escolhido, mostra só HOJE por padrão — tela enxuta
   if (!origemFixa && !filtroData){
     const hojeBahia = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Bahia' })).toISOString().slice(0,10);
@@ -4448,6 +4487,28 @@ function listarApostasPeguei(){
   });
 }
 window.listarApostasPeguei = listarApostasPeguei;
+// ---- HISTÓRICO MÉTODO 0x0: só os jogos salvos com "Método 0x0" no motivo ----
+function listarHist0x0(){ listarHistSug('h0', 'sugestao', false, 'Método 0x0'); }
+window.listarHist0x0 = listarHist0x0;
+document.addEventListener('change', e => {
+  if (['h0-ordem','h0-filtro-situacao','h0-filtro-pegas'].includes(e.target?.id)) listarHist0x0();
+});
+if ($('btn-h0-atualizar')) $('btn-h0-atualizar').addEventListener('click', async () => {
+  const d = $('h0-data-atualizar') ? $('h0-data-atualizar').value : '';
+  const st = $('h0-status'); if (st) st.textContent = '⏳ Atualizando...';
+  const b = $('btn-h0-atualizar'); if (b) b.disabled = true;
+  try{
+    let q = db.from('analises').select('*').eq('origem','sugestao').ilike('observacoes','%Método 0x0%');
+    if (d) q = q.eq('data_jogo', d);
+    const { data: jogos } = await q.order('data_jogo',{ascending:false});
+    if (!jogos?.length){ if(st) st.textContent = 'Nenhum jogo do Método 0x0' + (d?' nesse dia.':'.'); if(b) b.disabled=false; return; }
+    const { resolvidos, falhas } = await atualizarPlacaresLista(jogos, st);
+    if (st) st.textContent = `✅ ${resolvidos} atualizada(s) de ${jogos.length}` + (falhas.length?` · ${falhas.length} sem placar.`:'.');
+    listarHist0x0();
+  }catch(e){ if(st) st.textContent = '❌ Erro: '+e.message; }
+  finally{ if(b) b.disabled=false; }
+});
+
 document.addEventListener('change', e => {
   if (['ap-ordem','ap-filtro-mercado','ap-filtro-situacao'].includes(e.target?.id)) listarApostasPeguei();
 });
