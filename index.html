@@ -1516,7 +1516,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.59";
+const APP_VERSAO = "v4.60";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -4267,7 +4267,7 @@ async function listarHistSug(pref, origemFixa, soPegasFixo){
       <td><label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--chalk-dim)">
         <input type="checkbox" style="width:auto" ${a.aposta_feita?'checked':''} onchange="marcarApostaFeita(${a.id}, this.checked)"> ${a.aposta_feita?'sim':'não'}
       </label></td>
-      <td><button class="mini" onclick="integrarBanca(${a.id})" title="Enviar para a Gestão de banca">💰 Integrar</button> <button class="mini" onclick="excluirSugestao(${a.id}, origemFixa ? 'meus' : 'hist')" title="Excluir esta sugestão" style="border-color:var(--red);color:var(--red)">🗑️</button></td>
+      <td><button class="mini" onclick="toggleJogosAnteriores('','${(a.mandante||'').replace(/'/g,String.fromCharCode(92,39))}','','${(a.visitante||'').replace(/'/g,String.fromCharCode(92,39))}','','${a.mercado_sugerido||''}')" title="Ver jogos anteriores" style="border-color:var(--amber);color:var(--amber)">📋</button> <button class="mini" onclick="integrarBanca(${a.id})" title="Enviar para a Gestão de banca">💰 Integrar</button> <button class="mini" onclick="excluirSugestao(${a.id}, origemFixa ? 'meus' : 'hist')" title="Excluir esta sugestão" style="border-color:var(--red);color:var(--red)">🗑️</button></td>
     </tr>`).join('');
 }
 async function marcarApostaFeita(id, feita){
@@ -6667,7 +6667,7 @@ async function listarBotSug(){
       <td><label style="display:flex;align-items:center;gap:5px;cursor:pointer;font-size:12px;color:var(--chalk-dim)">
         <input type="checkbox" style="width:auto" ${a.aposta_feita?'checked':''} onchange="marcarApostaFeitaBot(${a.id}, this.checked)"> ${a.aposta_feita?'sim':'não'}
       </label></td>
-      <td><button class="mini" onclick="integrarBanca(${a.id})" title="Enviar para a Gestão de banca">💰 Integrar</button> <button class="mini" onclick="excluirSugestao(${a.id}, 'bot')" title="Excluir esta sugestão" style="border-color:var(--red);color:var(--red)">🗑️</button></td>
+      <td><button class="mini" onclick="toggleJogosAnteriores('','${(a.mandante||'').replace(/'/g,String.fromCharCode(92,39))}','','${(a.visitante||'').replace(/'/g,String.fromCharCode(92,39))}','','${a.mercado_sugerido||''}')" title="Ver jogos anteriores" style="border-color:var(--amber);color:var(--amber)">📋</button> <button class="mini" onclick="integrarBanca(${a.id})" title="Enviar para a Gestão de banca">💰 Integrar</button> <button class="mini" onclick="excluirSugestao(${a.id}, 'bot')" title="Excluir esta sugestão" style="border-color:var(--red);color:var(--red)">🗑️</button></td>
     </tr>`; }).join('');
 }
 window.listarBotSug = listarBotSug;
