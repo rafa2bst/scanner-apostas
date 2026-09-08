@@ -1548,7 +1548,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.61";
+const APP_VERSAO = "v4.62";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -7850,33 +7850,42 @@ async function gerarTendenciaGols(){
           lambdaFt = ((em.ftFez+ev.ftSof)/2) + ((ev.ftFez+em.ftSof)/2);
         if (em.htFez!=null && ev.htSof!=null && ev.htFez!=null && em.htSof!=null)
           lambdaHt = ((em.htFez+ev.htSof)/2) + ((ev.htFez+em.htSof)/2);
-        analisados.push({ j, lambdaFt, lambdaHt,
-          ht05: lambdaHt!=null?probOver(lambdaHt,0.5):null,
-          ht15: lambdaHt!=null?probOver(lambdaHt,1.5):null,
-          ft15: lambdaFt!=null?probOver(lambdaFt,1.5):null,
-          ft25: lambdaFt!=null?probOver(lambdaFt,2.5):null,
-          ft35: lambdaFt!=null?probOver(lambdaFt,3.5):null,
-        });
+        // só entra se tem dados de FT (o essencial); HT é bônus
+        if (lambdaFt == null) continue;
+        const ft15 = probOver(lambdaFt,1.5), ft25 = probOver(lambdaFt,2.5), ft35 = probOver(lambdaFt,3.5);
+        const ht05 = lambdaHt!=null?probOver(lambdaHt,0.5):null;
+        const ht15 = lambdaHt!=null?probOver(lambdaHt,1.5):null;
+        // NOTA DE ACERTO (0-10): quão forte é a tendência de gols do jogo
+        // combina Over 1.5 e Over 2.5 do FT (e sai-gol-HT quando disponível)
+        let notaBase = (ft15*0.5 + ft25*0.5); // 0-100
+        if (ht05!=null) notaBase = (ft15*0.4 + ft25*0.35 + ht05*0.25);
+        const nota = +(notaBase/10).toFixed(1); // 0-10
+        analisados.push({ j, lambdaFt, lambdaHt, nota, ht05, ht15, ft15, ft25, ft35 });
       }catch(_){}
     }
 
-    // ordena: se foco HT, por ht05; se FT, por ft25; ambos por soma
+    // ordena: se foco HT por ht05, se FT por ft25, ambos pela nota
     analisados.sort((a,b) => {
       if (foco==='ht') return (b.ht05||0)-(a.ht05||0);
       if (foco==='ft') return (b.ft25||0)-(a.ft25||0);
-      return ((b.ht05||0)+(b.ft25||0))-((a.ht05||0)+(a.ft25||0));
+      return b.nota-a.nota;
     });
 
-    $('gl-status').textContent = `✅ ${analisados.length} jogos analisados.`;
+    if (!analisados.length){ $('gl-status').textContent=''; aviso($('gl-aviso'), 'Nenhum jogo com histórico suficiente para calcular. Carregue as ligas em Estatísticas de time, ou os times ainda não têm jogos salvos.', 'erro'); btn.disabled=false; return; }
+    $('gl-status').textContent = `✅ ${analisados.length} jogos com tendência de gols calculada.`;
     const cor = p => p==null?'var(--chalk-dim)':p>=70?'var(--green)':p>=50?'var(--amber)':'var(--chalk-dim)';
     const cel = (rot, p) => `<div style="text-align:center"><div style="font-size:10px;color:var(--chalk-dim)">${rot}</div><div style="font-family:'Saira Condensed',sans-serif;font-size:20px;font-weight:800;color:${cor(p)}">${p==null?'—':p+'%'}</div></div>`;
 
     $('gl-lista').innerHTML = analisados.map(x => {
       const idx = gradeJogos.indexOf(x.j) >= 0 ? gradeJogos.indexOf(x.j) : (gradeJogos.push(x.j)-1);
+      const corNota = x.nota>=7?'var(--green)':x.nota>=5?'var(--amber)':'var(--red)';
       const blocoHt = (foco==='ambos'||foco==='ht') ? `<div style="flex:1;min-width:160px;background:var(--pitch);border-radius:8px;padding:10px"><b style="color:var(--amber);font-size:12px">⏱️ 1º TEMPO (HT)</b><div style="display:flex;gap:14px;margin-top:6px;justify-content:center">${cel('Sai gol (0.5)',x.ht05)}${cel('Over 1.5',x.ht15)}</div><div style="font-size:10.5px;color:var(--chalk-dim);text-align:center;margin-top:4px">média ${x.lambdaHt!=null?x.lambdaHt.toFixed(1):'—'} gols no HT</div></div>` : '';
       const blocoFt = (foco==='ambos'||foco==='ft') ? `<div style="flex:1;min-width:200px;background:var(--pitch);border-radius:8px;padding:10px"><b style="color:var(--amber);font-size:12px">🏁 JOGO TODO (FT)</b><div style="display:flex;gap:12px;margin-top:6px;justify-content:center">${cel('Over 1.5',x.ft15)}${cel('Over 2.5',x.ft25)}${cel('Over 3.5',x.ft35)}</div><div style="font-size:10.5px;color:var(--chalk-dim);text-align:center;margin-top:4px">média ${x.lambdaFt!=null?x.lambdaFt.toFixed(1):'—'} gols no FT</div></div>` : '';
-      return `<div class="mercado" style="border-left-color:var(--amber)">
-        <div class="nome" style="cursor:pointer" onclick="fichaJogo(${idx})">${x.j.mandante} x ${x.j.visitante}</div>
+      return `<div class="mercado" style="border-left-color:${corNota}">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+          <div class="nome" style="cursor:pointer" onclick="fichaJogo(${idx})">${x.j.mandante} x ${x.j.visitante}</div>
+          <div style="text-align:center;min-width:56px"><div style="font-family:'Saira Condensed',sans-serif;font-size:26px;font-weight:800;color:${corNota};line-height:1">${x.nota.toFixed(1)}</div><div style="font-size:9px;color:var(--chalk-dim)">nota gols</div></div>
+        </div>
         <div class="porque">${x.j.hora||''} · ${x.j.pais} — ${x.j.liga}</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">${blocoHt}${blocoFt}</div>
         <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
