@@ -1584,7 +1584,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.65";
+const APP_VERSAO = "v4.66";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2683,14 +2683,19 @@ function renderHistorico(filtro){
 
   // subabas
   const subaba = (id, label) => `<button class="mini" onclick="renderHistorico('${id}')" style="${filtro===id?'border-color:var(--amber);color:var(--amber);font-weight:700':''}">${label}</button>`;
-  const abas = `<div style="display:flex;gap:8px;margin-bottom:12px">
-    ${subaba('todos','Todos os jogos')} ${subaba('casa','🏠 Em casa')} ${subaba('fora','✈️ Fora')}
+  const abas = `<div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+    ${subaba('todos','Todos os jogos')} ${subaba('casa','🏠 Em casa')} ${subaba('fora','✈️ Fora')} ${subaba('ht','⏱️ Gols HT')} ${subaba('ft','🏁 Gols FT')}
   </div>`;
+  // subabas HT/FT usam todos os jogos (foco na análise de gols por tempo)
+  const focoTempo = (filtro==='ht'||filtro==='ft');
+  if (focoTempo) jogos = _histJogos;
 
   if (!jogos.length){ $('h-resumo').innerHTML = abas + '<p class="msg-vazia">Nenhum jogo nesse recorte.</p>'; $('h-tabela').innerHTML=''; return; }
 
   // estatísticas na perspectiva do time
   let fez=0, sof=0, v=0, e2=0, d=0, marcou=0, sofreu=0, over25=0, btts=0, htFez=0, htSof=0, nHt=0;
+  const overFt = {0.5:0,1.5:0,2.5:0,3.5:0,4.5:0};
+  const overHt = {0.5:0,1.5:0,2.5:0};
   const seq = [];
   jogos.forEach(g => {
     const mand = ehMandante(g);
@@ -2703,14 +2708,50 @@ function renderHistorico(filtro){
     if (con>0) sofreu++;
     if (pro+con>=3) over25++;
     if (pro>0&&con>0) btts++;
+    [0.5,1.5,2.5,3.5,4.5].forEach(l=>{if(pro+con>l)overFt[l]++;});
     const htM = mand ? g.ht_mandante : g.ht_visitante;
     const htA = mand ? g.ht_visitante : g.ht_mandante;
-    if (htM!=null&&htA!=null){ htFez+=htM; htSof+=htA; nHt++; }
+    if (htM!=null&&htA!=null){ htFez+=htM; htSof+=htA; nHt++; [0.5,1.5,2.5].forEach(l=>{if(htM+htA>l)overHt[l]++;}); }
     seq.push(pro>con?'v':pro<con?'d':'e');
   });
   const n = jogos.length;
   const pc = x => Math.round(x/n*100);
   const aprov = Math.round(((v*3+e2)/(n*3))*100);
+
+  // visão especial das subabas de gols por tempo (HT ou FT)
+  if (focoTempo){
+    const ehHt = filtro==='ht';
+    const base = ehHt ? overHt : overFt;
+    const linhas = ehHt ? [0.5,1.5,2.5] : [0.5,1.5,2.5,3.5,4.5];
+    const tot = ehHt ? nHt : n;
+    const media = ehHt ? (nHt?((htFez+htSof)/nHt):0) : ((fez+sof)/n);
+    if (ehHt && !nHt){ $('h-resumo').innerHTML = abas + '<div class="aviso">Sem dados de 1º tempo (HT) para este time. Recarregue a grade após aplicar a migração de HT no banco.</div>'; $('h-tabela').innerHTML=''; return; }
+    const corP = p => p>=70?'var(--green)':p>=40?'var(--amber)':'var(--chalk-dim)';
+    $('h-resumo').innerHTML = abas + `
+      <div style="background:var(--card);border-radius:10px;padding:16px;margin-bottom:12px">
+        <b style="font-size:15px">${_histTime} · ${ehHt?'⏱️ Gols no 1º tempo (HT)':'🏁 Gols no jogo todo (FT)'} <span style="font-size:12px;color:var(--chalk-dim)">(${tot} jogos)</span></b>
+        <div style="text-align:center;margin:12px 0">
+          <div style="font-family:'Saira Condensed',sans-serif;font-size:40px;font-weight:800;color:var(--amber);line-height:1">${media.toFixed(2)}</div>
+          <div style="font-size:11px;color:var(--chalk-dim)">média de gols ${ehHt?'no 1º tempo':'no jogo'}</div>
+        </div>
+        <table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:8px">
+          <tr style="border-bottom:1px solid var(--linha)"><th style="text-align:left;padding:5px;color:var(--chalk-dim);font-weight:400">Linha</th>${linhas.map(l=>`<th style="text-align:center;padding:5px">${l}</th>`).join('')}</tr>
+          <tr><td style="padding:5px;color:var(--green)">Over</td>${linhas.map(l=>{const p=tot?Math.round(base[l]/tot*100):0;return `<td style="text-align:center;padding:5px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:${corP(p)}">${p}%</td>`;}).join('')}</tr>
+          <tr><td style="padding:5px;color:var(--red)">Under</td>${linhas.map(l=>{const p=tot?Math.round((tot-base[l])/tot*100):0;return `<td style="text-align:center;padding:5px;font-family:'IBM Plex Mono',monospace;font-weight:700;color:${corP(p)}">${p}%</td>`;}).join('')}</tr>
+        </table>
+      </div>`;
+    // tabela de jogos com destaque no placar do tempo escolhido
+    $('h-tabela').innerHTML =
+      '<tr><th>Data</th><th>Local</th><th>Mandante</th><th>Placar FT</th><th>Visitante</th><th>Placar HT</th></tr>' +
+      jogos.map(j => {
+        const mand = ehMandante(j);
+        const temHt = j.ht_mandante!=null;
+        return `<tr><td>${j.data||''}</td><td>${mand?'🏠':'✈️'}</td>
+          <td>${j.mandante}</td><td>${j.gols_mandante} x ${j.gols_visitante}</td><td>${j.visitante}</td>
+          <td style="font-weight:${ehHt?'700':'400'};color:${ehHt&&temHt?'var(--amber)':'var(--chalk-dim)'};font-size:12px">${temHt?`${j.ht_mandante}x${j.ht_visitante}`:'—'}</td></tr>`;
+      }).join('');
+    return;
+  }
 
   $('h-resumo').innerHTML = abas + `
     <div style="background:var(--card);border-radius:10px;padding:14px;margin-bottom:12px">
