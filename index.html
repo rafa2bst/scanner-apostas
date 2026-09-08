@@ -269,6 +269,7 @@
         <button data-aba="sugestoes" title="O funil do dia: cruza odds e histórico e sugere os melhores jogos, com nota e mercado.">💡 Sugestões do dia</button>
         <button data-aba="topdia" title="Os 10 melhores jogos do dia pontuados por mercado (Back favorito, Under 3.5, lays).">🏆 TOP do dia</button>
         <button data-aba="metodo0x0" title="Times que vêm de 0x0 (1 ou 2 seguidos) — tendência de estourar e voltar a marcar gols.">🎯 Método 0x0</button>
+        <button data-aba="gols" title="Jogos com tendência de gols — probabilidade de sair gol no 1º tempo (HT) e no jogo todo (FT).">⚽ Tendência de gols</button>
       </div>
     </div>
 
@@ -764,6 +765,37 @@
     <div id="m0-aviso"></div>
     <div id="m0-lista"></div>
   </section>
+
+  <!-- ================= TENDÊNCIA DE GOLS ================= -->
+  <section id="aba-gols">
+    <h2>⚽ Tendência de gols</h2>
+    <p style="font-size:14px;color:var(--chalk-dim);margin-bottom:14px">
+      Varre os jogos do dia e rankeia por <b>probabilidade de gols</b>, separando o <b>1º tempo (HT)</b> e o <b>jogo todo (FT)</b>. Usa as médias de gols dos últimos jogos de cada equipe. Ideal para escolher entradas de Over.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <input type="date" id="gl-data" style="width:auto;padding:7px 10px" title="Dia dos jogos (em branco = hoje)">
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--chalk-dim)">
+        Ver:
+        <select id="gl-foco" style="width:auto;padding:7px 10px">
+          <option value="ambos">HT e FT</option>
+          <option value="ht">Só 1º tempo (HT)</option>
+          <option value="ft">Só jogo todo (FT)</option>
+        </select>
+      </label>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--chalk-dim)">
+        Ligas:
+        <select id="gl-ligas" style="width:auto;padding:7px 10px">
+          <option value="fav">Só minhas favoritas</option>
+          <option value="todas">Todas (mais lento)</option>
+        </select>
+      </label>
+      <button class="acao" id="btn-gl-buscar">🔍 Buscar</button>
+    </div>
+    <div id="gl-status" style="font-size:13px;color:var(--chalk-dim);margin-bottom:8px"></div>
+    <div id="gl-aviso"></div>
+    <div id="gl-lista"></div>
+  </section>
+
 
 
   <!-- ================= HISTÓRICO ================= -->
@@ -1516,7 +1548,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.60";
+const APP_VERSAO = "v4.61";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -7750,6 +7782,115 @@ async function gerarMetodo0x0(){
   finally{ btn.disabled = false; }
 }
 window.gerarMetodo0x0 = gerarMetodo0x0;
+
+// ===================== TENDÊNCIA DE GOLS =====================
+async function gerarTendenciaGols(){
+  const btn = $('btn-gl-buscar'); btn.disabled = true;
+  const data = $('gl-data').value;
+  const foco = $('gl-foco').value;
+  const soFav = $('gl-ligas').value === 'fav';
+  aviso($('gl-aviso'),''); $('gl-lista').innerHTML='';
+  $('gl-status').textContent = '⏳ Buscando a grade do dia...';
+
+  // calcula médias de gols HT e FT de um time a partir do histórico
+  function mediasTime(jogos, nome, id){
+    const norm = s => (s||'').toLowerCase();
+    const ehM = g => (id && String(g.mandante_id)===String(id)) || norm(g.mandante)===norm(nome);
+    let ftFez=0,ftSof=0,htFez=0,htSof=0,nFt=0,nHt=0;
+    (jogos||[]).slice(0,10).forEach(g => {
+      const m = ehM(g);
+      const fFez = m?g.gols_mandante:g.gols_visitante, fSof = m?g.gols_visitante:g.gols_mandante;
+      if (fFez!=null&&fSof!=null){ ftFez+=fFez; ftSof+=fSof; nFt++; }
+      const hM = m?g.ht_mandante:g.ht_visitante, hA = m?g.ht_visitante:g.ht_mandante;
+      if (hM!=null&&hA!=null){ htFez+=hM; htSof+=hA; nHt++; }
+    });
+    return {
+      ftFez: nFt?ftFez/nFt:null, ftSof: nFt?ftSof/nFt:null,
+      htFez: nHt?htFez/nHt:null, htSof: nHt?htSof/nHt:null, nFt, nHt,
+    };
+  }
+  // Poisson: prob de pelo menos 1 gol dado lambda (média esperada de gols no jogo)
+  const FATg = [1,1,2,6,24,120,720,5040,40320,362880,3628800];
+  const poisG = (k,l) => Math.exp(-l)*Math.pow(l,k)/FATg[k];
+  const probOver = (lambda, linha) => { // P(total > linha)
+    let acc = 0; const teto = Math.floor(linha);
+    for (let k=0;k<=teto;k++) acc += poisG(k, lambda);
+    return Math.round((1-acc)*100);
+  };
+
+  try{
+    const rg = await chamarEdge(data ? { acao:'grade', data } : { acao:'grade' });
+    let jogos = (rg.jogos ?? []).filter(j => jogoValido(j) && j.mandante_id && j.visitante_id);
+    if (soFav && typeof getLigasFav === 'function'){
+      const fav = getLigasFav();
+      if (fav.length){
+        const norm = s => (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+        jogos = jogos.filter(j => { const nome = norm(`${j.pais} — ${j.liga}`); return fav.some(f => { const [p,l]=f.split('—').map(x=>norm(x)); return nome.includes(p.trim()) && (!l||nome.includes(l.trim())); }); });
+      }
+    }
+    jogos = filtraSituacao(jogos, null);
+    if (!jogos.length){ $('gl-status').textContent=''; aviso($('gl-aviso'), soFav?'Nenhum jogo das suas favoritas hoje. Troque para "Todas".':'Nenhum jogo hoje.', 'erro'); btn.disabled=false; return; }
+
+    $('gl-status').textContent = `⏳ Analisando ${jogos.length} jogos...`;
+    const analisados = [];
+    let proc = 0;
+    for (const j of jogos){
+      proc++;
+      if (proc % 5 === 0) $('gl-status').textContent = `⏳ Analisando ${proc}/${jogos.length}...`;
+      try{
+        const [rm, rv] = await Promise.all([
+          chamarEdge({ acao:'historico', time: j.mandante, id: j.mandante_id }),
+          chamarEdge({ acao:'historico', time: j.visitante, id: j.visitante_id }),
+        ]);
+        const em = mediasTime(rm.jogos, j.mandante, j.mandante_id);
+        const ev = mediasTime(rv.jogos, j.visitante, j.visitante_id);
+        // lambda FT = (o que o mandante faz + o que o visitante sofre)/2 + (o que o visitante faz + o que o mandante sofre)/2
+        let lambdaFt = null, lambdaHt = null;
+        if (em.ftFez!=null && ev.ftSof!=null && ev.ftFez!=null && em.ftSof!=null)
+          lambdaFt = ((em.ftFez+ev.ftSof)/2) + ((ev.ftFez+em.ftSof)/2);
+        if (em.htFez!=null && ev.htSof!=null && ev.htFez!=null && em.htSof!=null)
+          lambdaHt = ((em.htFez+ev.htSof)/2) + ((ev.htFez+em.htSof)/2);
+        analisados.push({ j, lambdaFt, lambdaHt,
+          ht05: lambdaHt!=null?probOver(lambdaHt,0.5):null,
+          ht15: lambdaHt!=null?probOver(lambdaHt,1.5):null,
+          ft15: lambdaFt!=null?probOver(lambdaFt,1.5):null,
+          ft25: lambdaFt!=null?probOver(lambdaFt,2.5):null,
+          ft35: lambdaFt!=null?probOver(lambdaFt,3.5):null,
+        });
+      }catch(_){}
+    }
+
+    // ordena: se foco HT, por ht05; se FT, por ft25; ambos por soma
+    analisados.sort((a,b) => {
+      if (foco==='ht') return (b.ht05||0)-(a.ht05||0);
+      if (foco==='ft') return (b.ft25||0)-(a.ft25||0);
+      return ((b.ht05||0)+(b.ft25||0))-((a.ht05||0)+(a.ft25||0));
+    });
+
+    $('gl-status').textContent = `✅ ${analisados.length} jogos analisados.`;
+    const cor = p => p==null?'var(--chalk-dim)':p>=70?'var(--green)':p>=50?'var(--amber)':'var(--chalk-dim)';
+    const cel = (rot, p) => `<div style="text-align:center"><div style="font-size:10px;color:var(--chalk-dim)">${rot}</div><div style="font-family:'Saira Condensed',sans-serif;font-size:20px;font-weight:800;color:${cor(p)}">${p==null?'—':p+'%'}</div></div>`;
+
+    $('gl-lista').innerHTML = analisados.map(x => {
+      const idx = gradeJogos.indexOf(x.j) >= 0 ? gradeJogos.indexOf(x.j) : (gradeJogos.push(x.j)-1);
+      const blocoHt = (foco==='ambos'||foco==='ht') ? `<div style="flex:1;min-width:160px;background:var(--pitch);border-radius:8px;padding:10px"><b style="color:var(--amber);font-size:12px">⏱️ 1º TEMPO (HT)</b><div style="display:flex;gap:14px;margin-top:6px;justify-content:center">${cel('Sai gol (0.5)',x.ht05)}${cel('Over 1.5',x.ht15)}</div><div style="font-size:10.5px;color:var(--chalk-dim);text-align:center;margin-top:4px">média ${x.lambdaHt!=null?x.lambdaHt.toFixed(1):'—'} gols no HT</div></div>` : '';
+      const blocoFt = (foco==='ambos'||foco==='ft') ? `<div style="flex:1;min-width:200px;background:var(--pitch);border-radius:8px;padding:10px"><b style="color:var(--amber);font-size:12px">🏁 JOGO TODO (FT)</b><div style="display:flex;gap:12px;margin-top:6px;justify-content:center">${cel('Over 1.5',x.ft15)}${cel('Over 2.5',x.ft25)}${cel('Over 3.5',x.ft35)}</div><div style="font-size:10.5px;color:var(--chalk-dim);text-align:center;margin-top:4px">média ${x.lambdaFt!=null?x.lambdaFt.toFixed(1):'—'} gols no FT</div></div>` : '';
+      return `<div class="mercado" style="border-left-color:var(--amber)">
+        <div class="nome" style="cursor:pointer" onclick="fichaJogo(${idx})">${x.j.mandante} x ${x.j.visitante}</div>
+        <div class="porque">${x.j.hora||''} · ${x.j.pais} — ${x.j.liga}</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px">${blocoHt}${blocoFt}</div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button class="mini" onclick="fichaJogo(${idx})">🔎 Ficha</button>
+          <button class="mini" style="border-color:var(--amber);color:var(--amber)" onclick="toggleJogosAnteriores('','${x.j.mandante.replace(/'/g,String.fromCharCode(92,39))}','${x.j.mandante_id||''}','${x.j.visitante.replace(/'/g,String.fromCharCode(92,39))}','${x.j.visitante_id||''}','OVER 2.5')">📋 Jogos anteriores</button>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){ aviso($('gl-aviso'), 'Erro: '+e.message, 'erro'); $('gl-status').textContent=''; }
+  finally{ btn.disabled = false; }
+}
+window.gerarTendenciaGols = gerarTendenciaGols;
+if ($('btn-gl-buscar')) $('btn-gl-buscar').addEventListener('click', gerarTendenciaGols);
+
 
 // ===================== CLÁSSICOS DO DIA =====================
 // lista curada de rivalidades (cada par = um clássico). Nomes normalizados na comparação.
