@@ -191,6 +191,71 @@
 .fluxo li { margin-bottom: 8px; line-height: 1.5; }
 .ajuda-dl dt { color: var(--amber); font-weight: 600; margin-top: 12px; }
 .ajuda-dl dd { margin: 2px 0 0 0; color: var(--chalk-dim); line-height: 1.5; }
+  /* ---- Tela do jogo (v4.67) ---- */
+  .jg-topo{background:var(--pitch);border:1px solid rgba(237,234,224,.12);border-radius:var(--radius);padding:12px 16px 10px;margin-bottom:12px}
+  .jg-topo-linha{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:space-between}
+  .jg-liga{font-size:13.5px;color:var(--chalk);flex:1;text-align:center}
+  .jg-selo{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;border:1px solid rgba(237,234,224,.3);color:var(--chalk-dim);border-radius:6px;padding:3px 8px}
+  .jg-selo.pre{border-color:var(--green);color:var(--green)}
+  .jg-selo.vivo{border-color:var(--red);color:var(--red)}
+  .jg-times{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin:14px 0 8px}
+  .jg-time{text-align:center}
+  .jg-nome{font-family:'Saira Condensed',sans-serif;font-size:24px;font-weight:800;text-transform:uppercase;line-height:1.1}
+  .jg-centro{text-align:center;min-width:110px}
+  .jg-hora{font-family:'IBM Plex Mono',monospace;font-size:15px;color:var(--chalk)}
+  .jg-placar{font-family:'Saira Condensed',sans-serif;font-size:30px;font-weight:800;color:var(--amber);line-height:1.1;margin:2px 0}
+  .jg-odd{display:inline-block;margin-top:6px;background:var(--card-2);border-radius:999px;padding:3px 12px;font-family:'IBM Plex Mono',monospace;font-size:13.5px;font-weight:700}
+  .jg-rodape-odds{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:11.5px;color:var(--chalk-dim);border-top:1px solid rgba(237,234,224,.08);padding-top:8px}
+  .jg-rodape-odds b{color:var(--chalk)}
+  .jg-principais{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .jg-btn-principal{background:var(--card-2);border:1px solid rgba(237,234,224,.15);color:var(--chalk);border-radius:999px;padding:8px 16px;font-size:13.5px;font-weight:700;cursor:pointer;font-family:inherit}
+  .jg-btn-principal:hover{border-color:var(--amber)}
+  .jg-btn-principal.on{background:var(--green);color:var(--pitch);border-color:var(--green)}
+  .jg-subabas{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;border-bottom:1px solid rgba(237,234,224,.12);margin-bottom:14px}
+  .jg-sub{background:transparent;border:none;border-bottom:3px solid transparent;color:var(--chalk-dim);padding:9px 14px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit}
+  .jg-sub:hover{color:var(--chalk)}
+  .jg-sub.on{color:var(--pitch);background:var(--green);border-radius:8px 8px 0 0}
+  .jg-titulo-central{text-align:center;font-size:18px;margin:6px 0 14px}
+  .jg-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:10px}
+  .jg-card{background:var(--pitch);border-left:4px solid var(--amber);border-radius:8px;padding:12px 14px;text-align:center}
+  .jg-card.verde{border-left-color:var(--green)} .jg-card.verde .jg-card-sub{color:var(--green)}
+  .jg-card.amarelo{border-left-color:var(--amber)} .jg-card.amarelo .jg-card-sub{color:var(--amber)}
+  .jg-card.vermelho{border-left-color:var(--red)} .jg-card.vermelho .jg-card-sub{color:var(--red)}
+  .jg-card-tit{font-weight:700;font-size:14px;margin-bottom:4px}
+  .jg-card-sub{font-size:12.5px;line-height:1.4}
+  .jg-sinal{font-size:12px;font-weight:700;padding:3px 8px;border-radius:6px;white-space:nowrap}
+  .jg-sinal.verde{background:rgba(76,196,112,.18);color:var(--green)}
+  .jg-sinal.amarelo{background:rgba(255,197,61,.18);color:var(--amber)}
+  .jg-sinal.vermelho{background:rgba(255,107,87,.18);color:var(--red)}
+  .jg-filtros{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+  .jg-filtro{background:var(--card-2);border:1px solid rgba(237,234,224,.15);color:var(--chalk);border-radius:6px;padding:5px 10px;font-size:11.5px;font-weight:700;letter-spacing:.04em;cursor:pointer;font-family:inherit}
+  .jg-filtro.on{background:var(--green);color:var(--pitch);border-color:var(--green)}
+  .jg-barra{background:#1f7a3f;color:#fff;text-align:center;font-weight:700;font-size:15px;padding:6px 10px;border-radius:6px;margin-top:12px}
+  .jg-barra.azul{background:#1f5f8a}
+  .jg-barra.sub{font-size:13.5px;padding:4px 10px;margin-top:10px;opacity:.95}
+  .jg-barra small{font-weight:400;font-size:11px;opacity:.85}
+  .jg-tab{margin-top:0;font-size:13px}
+  .jg-tab th{text-align:center;font-family:inherit;font-size:11.5px;letter-spacing:0;text-transform:none;font-weight:700;color:var(--chalk);background:var(--pitch);padding:8px 6px;line-height:1.25}
+  .jg-tab td{text-align:center;font-family:'IBM Plex Mono',monospace;font-size:13px;padding:9px 6px}
+  .jg-toggle{display:inline-flex;border:1px solid rgba(255,255,255,.4);border-radius:999px;overflow:hidden}
+  .jg-toggle button{background:transparent;border:none;color:#fff;font-size:11px;font-weight:700;padding:2px 9px;cursor:pointer;font-family:inherit}
+  .jg-toggle button.on{background:#fff;color:#1f7a3f}
+  .jg-barra.azul .jg-toggle button.on{color:#1f5f8a}
+  .jg-race-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .jg-race-col{background:var(--pitch);border-radius:10px;padding:10px}
+  .jg-race td{text-align:left;font-family:inherit;font-size:12.5px;line-height:1.35;vertical-align:middle}
+  .jg-race th{text-align:left;color:var(--green)}
+  .jg-race-data{font-family:'IBM Plex Mono',monospace !important;font-size:12px !important;white-space:nowrap}
+  .jg-race-placar{font-family:'IBM Plex Mono',monospace !important;white-space:nowrap}
+  .jg-eu{font-weight:700;color:var(--chalk)}
+  .jg-res{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:5px;font-size:11px;font-weight:800}
+  .jg-res.v{background:var(--green);color:var(--pitch)} .jg-res.d{background:var(--red);color:#fff} .jg-res.e{background:var(--amber);color:var(--pitch)}
+  .jg-race-resumo{display:flex;gap:12px;flex-wrap:wrap;font-size:12px;color:var(--chalk-dim);margin-top:8px;padding-top:8px;border-top:1px solid rgba(237,234,224,.08)}
+  .jg-h2h-placar{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+  .jg-h2h-lado{background:var(--pitch);border-radius:9px;padding:10px;text-align:center}
+  .jg-h2h-lado b{font-family:'Saira Condensed',sans-serif;font-size:28px;color:var(--amber);display:block;line-height:1}
+  .jg-h2h-lado span{font-size:11.5px;color:var(--chalk-dim);text-transform:uppercase}
+  @media(max-width:760px){.jg-race-grid{grid-template-columns:1fr}.jg-nome{font-size:19px}.jg-cards{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -303,6 +368,7 @@
       </div>
     </div>
 
+    <button data-aba="jogo" style="display:none" aria-hidden="true"></button>
     <button data-aba="importar" class="menu-item-solo" title="Importe planilhas de resultados (CSV) direto para o banco.">📥 Importar CSV</button>
     <button data-aba="ajuda" class="menu-item-solo" title="Manual do sistema: o que cada tela faz.">❓ Ajuda</button>
     <button data-aba="sobre" class="menu-item-solo" title="Sobre o sistema e o histórico de versões.">ℹ️ Sobre</button>
@@ -372,6 +438,11 @@
     <div id="grade-grupos"></div>
     <div id="grade-ficha"></div>
     <p class="msg-vazia" id="grade-vazia">Escolha uma data e carregue a grade. Clique em qualquer jogo para abrir a ficha completa do confronto.</p>
+  </section>
+
+  <!-- ================= TELA DO JOGO (ficha em abas) ================= -->
+  <section id="aba-jogo">
+    <div id="jogo-tela"><p class="msg-vazia">Clique em qualquer jogo (Grade, Sugestões, TOP do dia, Ao vivo…) para abrir a ficha do confronto.</p></div>
   </section>
 
   <!-- ================= LIGAS PRINCIPAIS ================= -->
@@ -986,6 +1057,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.67</b></td><td>Nova <b>tela do jogo</b>: ao clicar em um confronto abre uma ficha em abas — <b>Análise MatchOdds</b> (Análise I.A. com tendências automáticas e veredito de exchange, Estatísticas com filtro Geral/Casa/Fora e 1º/2º tempo, Race 10 dos dois times e Confronto Direto) e <b>Placares e Modelo</b> (Poisson, grade de placares, lay goleada).</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v3.80</b></td><td>Nova aba <b>📲 Sugestões do bot</b>: separa os alertas do vigia das sugestões manuais, com resumo de green/red, taxa de acerto e marcação de "peguei". Filtro de origem também no Histórico de sugestões.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v3.79</b></td><td>Os alertas do <b>Vigia do Telegram</b> agora entram no Histórico de sugestões do site (marcados com selo 📲 VIGIA), onde você marca se pegou a aposta e o green/red é apurado automaticamente. Lay Goleada Visitante passou a filtrar por <b>odd justa mínima</b> (1.10) em vez de nota, cortando os lays de odd baixíssima.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v3.78</b></td><td>Criado este menu <b>ℹ️ Sobre</b> com o objetivo do sistema e o histórico completo de versões.</td></tr>
@@ -1584,7 +1656,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.66";
+const APP_VERSAO = "v4.67";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2034,11 +2106,12 @@ function ultimos5(jogos){
 async function fichaJogo(idx){
   const j = gradeJogos[idx];
   if (!j) return;
-  // a ficha é renderizada na aba Grade — garante que estamos nela
-  irParaAba('grade');
-  const alvo = $('grade-ficha');
-  alvo.innerHTML = '<p class="msg-vazia">⏳ Montando a ficha do confronto…</p>';
-  alvo.scrollIntoView({behavior:'smooth', block:'start'});
+  // a ficha abre na tela do jogo (aba própria, em abas: Análise I.A. / Estatísticas / Race 10 / Confronto Direto)
+  irParaAba('jogo');
+  const alvo = $('jogo-tela');
+  alvo.innerHTML = `<p class="msg-vazia">⏳ Montando a ficha de ${j.mandante} x ${j.visitante}…</p>`;
+  window.scrollTo({top:0, behavior:'smooth'});
+  jogoUI.principal = 'matchodds'; jogoUI.sub = 'ia'; jogoUI.filtro = 'geral'; jogoUI.raceM = 'geral'; jogoUI.raceV = 'geral';
   try{
     const pm = { acao:'historico', time: j.mandante }; if (j.mandante_id) pm.id = j.mandante_id;
     const pv = { acao:'historico', time: j.visitante }; if (j.visitante_id) pv.id = j.visitante_id;
@@ -2055,8 +2128,9 @@ async function fichaJogo(idx){
       </div>` : '<p class="msg-vazia">Sem odds — rode "Buscar odds do dia" na aba Favoritos.</p>';
 
     if (!rm.jogos?.length || !rv.jogos?.length){
-      alvo.innerHTML = `<div class="aviso"><b>🔎 ${j.mandante} x ${j.visitante}</b>${oddsHtml}
-        <p class="msg-vazia">Histórico insuficiente (${rm.jogos?.length||0} x ${rv.jogos?.length||0}). Rode o backfill/importações.</p></div>`;
+      jogoDados = { j, idx, o, rmJogos: rm.jogos||[], rvJogos: rv.jogos||[], h2h: [], temHistorico: false,
+        antigo: `${oddsHtml}<p class="msg-vazia">Histórico insuficiente (${rm.jogos?.length||0} x ${rv.jogos?.length||0}). Rode o backfill/importações.</p>` };
+      renderTelaJogo();
       return;
     }
     const em = estatCompleta(rm.jogos), ev = estatCompleta(rv.jogos);
@@ -2212,7 +2286,15 @@ async function fichaJogo(idx){
 
     // ---- H2H colorido ----
     let h2hHtml = '';
+    let h2hLista = [];
     try{
+      if (j.mandante_id && j.visitante_id){
+        try{
+          const rh = await chamarEdge({ acao:'confronto_direto', t1: j.mandante_id, t2: j.visitante_id, n: 10 });
+          h2hLista = (rh.jogos||[]).filter(g => g.gols_mandante!=null).map(g => ({ data: g.data, liga: g.liga||g.competicao||'', mandante: g.mandante, visitante: g.visitante,
+            mandante_id: g.mandante_id, gm: g.gols_mandante, gv: g.gols_visitante, htm: g.ht_mandante, htv: g.ht_visitante }));
+        } catch(_){}
+      }
       const tok = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/\s+/).filter(p=>p.length>=4)[0] || s;
       const tA = tok(j.mandante), tB = tok(j.visitante);
       const clausulas = [];
@@ -2235,6 +2317,9 @@ async function fichaJogo(idx){
           if (vistos.has(k)) return false;
           vistos.add(k); return true;
         }).slice(0, 8);
+        if (lista.length && !h2hLista.length){
+          h2hLista = lista.map(g => { const [gm, gv] = (g.placar||'0x0').split('x').map(Number); return { data: g.data_jogo, liga: g.liga||'', mandante: g.mandante, visitante: g.visitante, mandante_id: g.mandante_id, gm, gv, htm: null, htv: null }; });
+        }
         if (lista.length){
           let vA=0, vB=0, emps=0;
           const linhas = lista.map(g => {
@@ -2250,12 +2335,8 @@ async function fichaJogo(idx){
       }
     } catch(_){}
 
-    alvo.innerHTML = `<div class="aviso" style="margin-top:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
-        <b style="font-family:'Saira Condensed',sans-serif;font-size:21px;text-transform:uppercase">🔎 ${j.mandante} x ${j.visitante}</b>
-        <span style="font-size:12.5px;color:var(--chalk-dim)">${j.pais} — ${j.liga} · ${j.hora||''}</span>
-        <button class="mini" onclick="$('grade-ficha').innerHTML=''">fechar ✕</button>
-      </div>
+    const antigo = `
+      <h3 style="margin-top:0">Odds de abertura</h3>
       ${oddsHtml}
       ${comp}
       ${split}
@@ -2270,15 +2351,407 @@ async function fichaJogo(idx){
         ${(j.fixture_id > 0 && ['FT','AET','PEN','1H','2H','HT','ET','P','BT','LIVE','INT'].includes(j.status)) ? `<button class="mini" onclick="estatsDetalhadas('${j.fixture_id}', this)">📊 Estatísticas detalhadas (chutes, cartões, desarmes)${['1H','2H','HT','ET','P','BT','LIVE','INT'].includes(j.status)?' 🔴 ao vivo':''}</button>` : ''}
         <button class="mini" onclick="verArbitro('${j.fixture_id}', this)">⚖️ Média do árbitro</button>
         <button class="mini" onclick="abrirAnaliseCompleta(${idx})" style="border-color:var(--amber);color:var(--amber)">🔬 Análise completa</button>
-        <button class="mini" onclick="analisarComIA('${j.mandante.replace(/'/g,String.fromCharCode(92,39))}','${j.visitante.replace(/'/g,String.fromCharCode(92,39))}','${(j.liga||'').replace(/'/g,String.fromCharCode(92,39))}', this)" style="border-color:#8e7cff;color:#8e7cff">🤖 Analisar com IA (Gemini)</button>
       </div>
-      <div id="ficha-ia-resultado"></div>
-      <div id="ficha-estats"></div>
-      <p style="font-size:12px;color:var(--chalk-dim);margin-top:10px">As estatísticas detalhadas (chutes, cartões, desarmes, escanteios, notas, minuto dos gols) são buscadas sob demanda — 3 requisições por jogo. No plano grátis use com parcimônia; no Pro, à vontade.</p>
-    </div>`;
+      <p style="font-size:12px;color:var(--chalk-dim);margin-top:10px">As estatísticas detalhadas (chutes, cartões, desarmes, escanteios, notas, minuto dos gols) são buscadas sob demanda — 3 requisições por jogo. No plano grátis use com parcimônia; no Pro, à vontade.</p>`;
+    jogoDados = { j, idx, o, rmJogos: rm.jogos, rvJogos: rv.jogos, h2h: h2hLista, temHistorico: true, antigo, iaHtml:'', estatsHtml:'' };
+    renderTelaJogo();
   } catch(e){ alvo.innerHTML = `<div class="aviso erro">Falha na ficha: ${e.message}</div>`; }
 }
 window.fichaJogo = fichaJogo;
+
+// ==========================================================
+// TELA DO JOGO (v4.67) — ficha do confronto em abas
+// Análise MatchOdds → Análise I.A. | Estatísticas | Race 10 | Confronto Direto
+// ==========================================================
+let jogoDados = null;
+const jogoUI = { principal:'matchodds', sub:'ia', filtro:'geral', raceM:'geral', raceV:'geral', minutos:'n' };
+
+// estatísticas completas de um recorte de jogos, na perspectiva do time
+function calcRecorte(jogos, nome, id){
+  const norm = s => (s||'').toLowerCase();
+  const ehM = g => (g.time_era_mandante !== undefined && g.time_era_mandante !== null) ? !!g.time_era_mandante
+    : ((id && String(g.mandante_id)===String(id)) || norm(g.mandante)===norm(nome));
+  const r = { n:0, v:0, e:0, d:0, marcou:0, sofreu:0, gp:0, gc:0, btts:0, cs:0, over:{0.5:0,1.5:0,2.5:0,3.5:0,4.5:0},
+              nHt:0, htV:0, htE:0, htD:0, htMarcou:0, htSofreu:0, htGp:0, htGc:0, htOver05:0, htOver15:0,
+              stV:0, stE:0, stD:0, stMarcou:0, stSofreu:0, stGp:0, stGc:0, stOver05:0, seq:[] };
+  (jogos||[]).forEach(g => {
+    const m = ehM(g);
+    const pro = m ? g.gols_mandante : g.gols_visitante;
+    const con = m ? g.gols_visitante : g.gols_mandante;
+    if (pro==null || con==null) return;
+    r.n++; r.gp+=pro; r.gc+=con;
+    if (pro>con){ r.v++; r.seq.push('v'); } else if (pro<con){ r.d++; r.seq.push('d'); } else { r.e++; r.seq.push('e'); }
+    if (pro>0) r.marcou++; if (con>0) r.sofreu++; if (pro>0&&con>0) r.btts++; if (con===0) r.cs++;
+    [0.5,1.5,2.5,3.5,4.5].forEach(l => { if (pro+con>l) r.over[l]++; });
+    const hp = m ? g.ht_mandante : g.ht_visitante, hc = m ? g.ht_visitante : g.ht_mandante;
+    if (hp!=null && hc!=null){
+      r.nHt++; r.htGp+=hp; r.htGc+=hc;
+      if (hp>hc) r.htV++; else if (hp<hc) r.htD++; else r.htE++;
+      if (hp>0) r.htMarcou++; if (hc>0) r.htSofreu++;
+      if (hp+hc>0) r.htOver05++; if (hp+hc>1) r.htOver15++;
+      const sp = pro-hp, sc = con-hc;
+      r.stGp+=sp; r.stGc+=sc;
+      if (sp>sc) r.stV++; else if (sp<sc) r.stD++; else r.stE++;
+      if (sp>0) r.stMarcou++; if (sc>0) r.stSofreu++; if (sp+sc>0) r.stOver05++;
+    }
+  });
+  const n = r.n||1, nh = r.nHt||1;
+  const pc = x => Math.round(x/n*100), ph = x => Math.round(x/nh*100);
+  const f2 = (x,d) => d ? (x/d).toFixed(2) : '—';
+  return { ...r,
+    pctVit:pc(r.v), pctEmp:pc(r.e), pctDer:pc(r.d), pctMarcou:pc(r.marcou), pctSofreu:pc(r.sofreu), pctBtts:pc(r.btts), pctCS:pc(r.cs),
+    pctOver: Object.fromEntries([0.5,1.5,2.5,3.5,4.5].map(l => [l, pc(r.over[l])])),
+    mediaPro:f2(r.gp,r.n), mediaContra:f2(r.gc,r.n), mediaTotal:f2(r.gp+r.gc,r.n),
+    htPctV:ph(r.htV), htPctE:ph(r.htE), htPctD:ph(r.htD), htPctMarcou:ph(r.htMarcou), htPctSofreu:ph(r.htSofreu), htPctOver05:ph(r.htOver05), htPctOver15:ph(r.htOver15),
+    htMediaPro:f2(r.htGp,r.nHt), htMediaContra:f2(r.htGc,r.nHt), htMediaTotal:f2(r.htGp+r.htGc,r.nHt),
+    stPctV:ph(r.stV), stPctE:ph(r.stE), stPctD:ph(r.stD), stPctMarcou:ph(r.stMarcou), stPctSofreu:ph(r.stSofreu), stPctOver05:ph(r.stOver05),
+    stMediaPro:f2(r.stGp,r.nHt), stMediaContra:f2(r.stGc,r.nHt), stMediaTotal:f2(r.stGp+r.stGc,r.nHt),
+    aprov: r.n ? Math.round((r.v*3+r.e)/(r.n*3)*100) : 0,
+  };
+}
+function jgEhMandante(g, nome, id){
+  const norm = s => (s||'').toLowerCase();
+  if (g.time_era_mandante !== undefined && g.time_era_mandante !== null) return !!g.time_era_mandante;
+  return (id && String(g.mandante_id)===String(id)) || norm(g.mandante)===norm(nome);
+}
+function jgFiltra(jogos, nome, id, filtro){
+  if (filtro==='casa') return (jogos||[]).filter(g => jgEhMandante(g,nome,id));
+  if (filtro==='fora') return (jogos||[]).filter(g => !jgEhMandante(g,nome,id));
+  return jogos||[];
+}
+// cor da porcentagem: bom = quanto maior melhor
+function jgCor(p, bom=true){
+  if (p==null || isNaN(p)) return 'var(--chalk-dim)';
+  const v = bom ? p : 100-p;
+  return v>=60 ? 'var(--green)' : v>=40 ? 'var(--amber)' : 'var(--red)';
+}
+const jgPct = (p, bom=true) => `<b style="color:${jgCor(p,bom)}">${p}%</b>`;
+const jgData = d => d ? `${d.slice(8,10)}/${d.slice(5,7)}/${d.slice(2,4)}` : '';
+function jgLambdas(em, ev){
+  const clamp2 = (x,a,b) => { const v = Number(x); if (!isFinite(v)) return (a+b)/2; return Math.min(Math.max(v,a),b); };
+  const lC = clamp2(((+em.mediaPro)+(+ev.mediaContra))/2*1.12, .2, 4.2);
+  const lF = clamp2(((+ev.mediaPro)+(+em.mediaContra))/2*0.92, .15, 4.0);
+  return { lC, lF };
+}
+
+function renderTelaJogo(){
+  const d = jogoDados; if (!d) return;
+  const j = d.j, o = d.o;
+  const statusVivo = ['1H','2H','HT','ET','P','BT','LIVE','INT'].includes(j.status);
+  const encerrado = ['FT','AET','PEN'].includes(j.status);
+  const placar = j.placar && j.placar !== '-' ? j.placar : (statusVivo ? '0x0' : 'x');
+  const selo = statusVivo ? '<span class="jg-selo vivo">🔴 AO VIVO</span>' : encerrado ? '<span class="jg-selo">ENCERRADO</span>' : '<span class="jg-selo pre">ANÁLISE PRÉ</span>';
+  const btnP = (id, nome, extra='') => `<button class="jg-btn-principal ${jogoUI.principal===id?'on':''}" onclick="trocaJogoPrincipal('${id}')" ${extra}>${nome}</button>`;
+  const btnS = (id, nome) => `<button class="jg-sub ${jogoUI.sub===id?'on':''}" onclick="trocaJogoSub('${id}')">${nome}</button>`;
+  $('jogo-tela').innerHTML = `
+    <div class="jg-topo">
+      <div class="jg-topo-linha">
+        <button class="mini" onclick="irParaAba('grade')">← Voltar</button>
+        <span class="jg-liga">🏆 ${j.pais||''}${j.pais&&j.liga?' — ':''}${j.liga||''}</span>
+        ${selo}
+      </div>
+      <div class="jg-times">
+        <div class="jg-time"><div class="jg-nome">${j.mandante}</div><div class="jg-odd" title="Odd de abertura — casa (1)">${fmtOdd(o?.odd_home)}</div></div>
+        <div class="jg-centro">
+          <div class="jg-hora">${j.hora||''}</div>
+          <div class="jg-placar">${placar}</div>
+          <div class="jg-odd" title="Odd de abertura — empate (X)">${fmtOdd(o?.odd_draw)}</div>
+        </div>
+        <div class="jg-time"><div class="jg-nome">${j.visitante}</div><div class="jg-odd" title="Odd de abertura — fora (2)">${fmtOdd(o?.odd_away)}</div></div>
+      </div>
+      <div class="jg-rodape-odds">
+        <span>ODDS DE ABERTURA</span>
+        ${o?.odd_over25 ? `<span>Over 2.5 <b>${fmtOdd(o.odd_over25)}</b> · Under 2.5 <b>${fmtOdd(o.odd_under25)}</b></span>` : '<span style="color:var(--chalk-dim)">sem odds — rode "Buscar odds do dia" em Favoritos</span>'}
+      </div>
+    </div>
+    <div class="jg-principais">
+      ${btnP('matchodds','Análise MatchOdds')}
+      ${btnP('modelo','Placares e Modelo')}
+      <button class="jg-btn-principal" onclick="abrirAnaliseCompleta(${d.idx})">🔬 Análise Completa</button>
+      <button class="jg-btn-principal" onclick="$('sc-mandante').value=jogoDados.j.mandante;$('sc-mandante').dataset.tid=jogoDados.j.mandante_id??'';$('sc-visitante').value=jogoDados.j.visitante;$('sc-visitante').dataset.tid=jogoDados.j.visitante_id??'';irParaAba('scanner')">🎯 Scanner</button>
+    </div>
+    ${jogoUI.principal==='matchodds' ? `<div class="jg-subabas">
+      ${btnS('ia','Análise I.A.')}${btnS('estat','Estatísticas')}${btnS('race','Race 10')}${btnS('h2h','Confronto Direto')}
+    </div>` : ''}
+    <div id="jogo-conteudo"></div>`;
+  renderJogoConteudo();
+}
+function guardarBlocosDinamicos(){
+  if (!jogoDados) return;
+  const ia = $('ficha-ia-resultado'); if (ia && ia.innerHTML) jogoDados.iaHtml = ia.innerHTML;
+  const es = $('ficha-estats'); if (es && es.innerHTML) jogoDados.estatsHtml = es.innerHTML;
+}
+function trocaJogoPrincipal(id){ guardarBlocosDinamicos(); jogoUI.principal = id; renderTelaJogo(); }
+function trocaJogoSub(id){ guardarBlocosDinamicos(); jogoUI.sub = id; renderTelaJogo(); }
+function trocaJogoFiltro(f){ jogoUI.filtro = f; renderJogoConteudo(); }
+function trocaJogoRace(lado, f){ if (lado==='m') jogoUI.raceM = f; else jogoUI.raceV = f; renderJogoConteudo(); }
+function trocaJogoMinutos(m){ jogoUI.minutos = m; renderJogoConteudo(); }
+window.trocaJogoPrincipal = trocaJogoPrincipal; window.trocaJogoSub = trocaJogoSub; window.trocaJogoFiltro = trocaJogoFiltro;
+window.trocaJogoRace = trocaJogoRace; window.trocaJogoMinutos = trocaJogoMinutos;
+
+function renderJogoConteudo(){
+  const d = jogoDados; if (!d) return;
+  const alvo = $('jogo-conteudo'); if (!alvo) return;
+  if (jogoUI.principal==='modelo'){
+    alvo.innerHTML = `<div class="aviso" style="margin-top:4px">${d.antigo}<div id="ficha-estats">${d.estatsHtml||''}</div></div>`;
+    return;
+  }
+  if (!d.temHistorico){
+    alvo.innerHTML = `<div class="aviso erro">Histórico insuficiente (${d.rmJogos.length} x ${d.rvJogos.length} jogos). Rode o backfill/importações para este time.</div>`;
+    return;
+  }
+  if (jogoUI.sub==='ia') alvo.innerHTML = renderJogoIA();
+  else if (jogoUI.sub==='estat') alvo.innerHTML = renderJogoEstat();
+  else if (jogoUI.sub==='race') alvo.innerHTML = renderJogoRace();
+  else if (jogoUI.sub==='h2h') alvo.innerHTML = renderJogoH2H();
+}
+
+// ---------- ANÁLISE I.A. (regras automáticas + veredito exchange + Gemini) ----------
+function renderJogoIA(){
+  const d = jogoDados, j = d.j, o = d.o, nm = j.mandante, nv = j.visitante;
+  const em = calcRecorte(d.rmJogos, nm, j.mandante_id), ev = calcRecorte(d.rvJogos, nv, j.visitante_id);
+  const ec = calcRecorte(jgFiltra(d.rmJogos, nm, j.mandante_id, 'casa'), nm, j.mandante_id);
+  const ef = calcRecorte(jgFiltra(d.rvJogos, nv, j.visitante_id, 'fora'), nv, j.visitante_id);
+  const cards = [];
+  const card = (tipo, tit, sub) => cards.push(`<div class="jg-card ${tipo}"><div class="jg-card-tit">${tit}</div><div class="jg-card-sub">${sub}</div></div>`);
+  const oh = Number(o?.odd_home)||0, oa = Number(o?.odd_away)||0;
+
+  // favorito e mando
+  if (oh && oh <= 1.75){
+    if (ec.n>=3 && ec.pctVit>=60) card('verde', `${nm} é o favorito e é forte em casa!`, `Odd ${fmtOdd(oh)} · venceu ${ec.pctVit}% dos últimos ${ec.n} jogos como mandante (aprov. ${ec.aprov}%).`);
+    else if (ec.n>=3 && ec.pctVit<40) card('vermelho', `Favorito, mas rende pouco em casa`, `Odd ${fmtOdd(oh)} · venceu só ${ec.pctVit}% dos últimos ${ec.n} jogos em casa. Cuidado com o back a odd baixa.`);
+    else card('amarelo', `${nm} é o favorito (odd ${fmtOdd(oh)})`, `Vitórias em casa: ${ec.pctVit}% em ${ec.n} jogos · geral ${em.pctVit}%.`);
+  }
+  if (oa && oa <= 1.75){
+    if (ef.n>=3 && ef.pctVit>=60) card('verde', `${nv} é o favorito e joga bem fora!`, `Odd ${fmtOdd(oa)} · venceu ${ef.pctVit}% dos últimos ${ef.n} jogos como visitante.`);
+    else if (ef.n>=3 && ef.pctVit<40) card('vermelho', `Favorito visitante com desempenho fraco fora`, `Odd ${fmtOdd(oa)} · venceu só ${ef.pctVit}% dos últimos ${ef.n} jogos fora.`);
+    else card('amarelo', `${nv} é o favorito (odd ${fmtOdd(oa)})`, `Vitórias fora: ${ef.pctVit}% em ${ef.n} jogos · geral ${ev.pctVit}%.`);
+  }
+  // zebra
+  if (oa >= 4.5 && ef.n>=3 && ef.pctVit <= 20) card('verde', `Zebra fraca fora de casa`, `${nv} venceu só ${ef.pctVit}% dos últimos ${ef.n} jogos fora e sofre ${ef.mediaContra} gols/jogo. Cenário de Lay zebra.`);
+  if (oh >= 4.5 && ec.n>=3 && ec.pctVit <= 20) card('verde', `Mandante zebra sem força em casa`, `${nm} venceu só ${ec.pctVit}% dos últimos ${ec.n} jogos em casa. Cenário de Lay zebra.`);
+  // gols
+  if (em.pctOver[2.5]>=60 && ev.pctOver[2.5]>=60) card('verde', `Tendência de jogo com gols!`, `Over 2.5 saiu em ${em.pctOver[2.5]}% dos jogos do ${nm} e ${ev.pctOver[2.5]}% do ${nv}. Médias: ${em.mediaTotal} e ${ev.mediaTotal} gols/jogo.`);
+  else if (em.pctOver[2.5]<=40 && ev.pctOver[2.5]<=40) card('amarelo', `Tendência de poucos gols`, `Under 2.5 em ${100-em.pctOver[2.5]}% dos jogos do ${nm} e ${100-ev.pctOver[2.5]}% do ${nv}. Médias: ${em.mediaTotal} e ${ev.mediaTotal} gols/jogo.`);
+  if (em.pctBtts>=60 && ev.pctBtts>=60) card('verde', `Ambas marcam é tendência`, `BTTS em ${em.pctBtts}% dos jogos do ${nm} e ${ev.pctBtts}% do ${nv}.`);
+  else if (em.pctBtts<=40 && ev.pctBtts<=40) card('amarelo', `Ambas marcam pouco provável`, `BTTS em só ${em.pctBtts}% (${nm}) e ${ev.pctBtts}% (${nv}).`);
+  // 1º tempo
+  if (em.nHt>=5 && ev.nHt>=5){
+    if (em.htPctOver05>=65 && ev.htPctOver05>=65) card('verde', `Gol no 1º tempo é tendência`, `Saiu gol no HT em ${em.htPctOver05}% dos jogos do ${nm} e ${ev.htPctOver05}% do ${nv}. Média HT: ${em.htMediaTotal} e ${ev.htMediaTotal}.`);
+    else if (em.htPctOver05<=45 && ev.htPctOver05<=45) card('amarelo', `1º tempo morno`, `Gol no HT em só ${em.htPctOver05}% (${nm}) e ${ev.htPctOver05}% (${nv}). Bom para Under HT / entrar no 2º tempo.`);
+    if (em.stMediaTotal!=='—' && (+em.stMediaTotal) >= 1.5 && (+ev.stMediaTotal) >= 1.5) card('verde', `Os gols saem no 2º tempo`, `Média no 2º tempo: ${em.stMediaTotal} (${nm}) e ${ev.stMediaTotal} (${nv}) gols por jogo.`);
+  }
+  // minutagem da temporada (se já carregada)
+  const fim = (res, nome) => {
+    const gp = res?.golsProMinuto; if (!gp) return;
+    const tot = ['0-15','16-30','31-45','46-60','61-75','76-90'].reduce((s,f)=>s+(parseInt(gp[f]?.total)||0),0);
+    const late = parseInt(gp['76-90']?.total)||0;
+    if (tot>=8 && late/tot >= 0.28) card('verde', `${nome} marca muito no fim do jogo!`, `${late} dos ${tot} gols na temporada (${Math.round(late/tot*100)}%) saíram dos 76' em diante. Pressiona quando está empatando ou perdendo.`);
+  };
+  if (d.temp){ fim(d.temp.m, nm); fim(d.temp.v, nv); }
+  // defesa / sequências
+  if (em.n>=5 && em.pctCS>=50) card('verde', `${nm} com defesa sólida`, `Não sofreu gol em ${em.pctCS}% dos últimos ${em.n} jogos.`);
+  if (ev.n>=5 && ev.pctCS>=50) card('verde', `${nv} com defesa sólida`, `Não sofreu gol em ${ev.pctCS}% dos últimos ${ev.n} jogos.`);
+  [...sequencias(nm, d.rmJogos), ...sequencias(nv, d.rvJogos)].forEach(ch => {
+    const txt = ch.replace(/<[^>]+>/g,'');
+    const ruim = /sem vencer|sem marcar|sofre gol/.test(txt);
+    card(ruim?'vermelho':'amarelo', txt, 'Sequência atual (últimos jogos, do mais recente para trás).');
+  });
+  if (!cards.length) card('amarelo', 'Sem tendências fortes neste confronto', 'Os números dos dois times estão na média — veja Estatísticas e Race 10 antes de entrar.');
+
+  // veredito exchange (Poisson)
+  const { lC, lF } = jgLambdas(em, ev);
+  const P = (h,a) => pois(h,lC)*pois(a,lF);
+  let pOver=0, p1=0, pX=0, p2=0, gol=0;
+  for (let h=0;h<=8;h++) for (let a=0;a<=8;a++){ const p=P(h,a); if (h+a>=3) pOver+=p; if (h>a) p1+=p; else if (h===a) pX+=p; else p2+=p; if ((h>=4&&h>a)||(a>=4&&a>h)) gol+=p; }
+  const p10 = P(1,0), p01 = P(0,1);
+  const zebraEhVis = oh && oa ? oa > oh : p1 > p2;
+  const pZebra = zebraEhVis ? p2 : p1, nZebra = zebraEhVis ? nv : nm;
+  const sinal = (p, ok, aten) => p <= ok ? ['verde','✅ Viável'] : p <= aten ? ['amarelo','⚠️ Atenção'] : ['vermelho','⛔ Evitar'];
+  const linha = (mercado, prob, s, porque) => `<tr><td><b>${mercado}</b></td><td class="valor">${pct(prob)}%</td><td><span class="jg-sinal ${s[0]}">${s[1]}</span></td><td style="font-size:12.5px;color:var(--chalk-dim)">${porque}</td></tr>`;
+  const sOver = pOver >= .58 ? ['verde','✅ Over 2.5'] : pOver <= .42 ? ['verde','✅ Under 2.5'] : ['amarelo','⚠️ Neutro'];
+  const veredito = `<h3 style="margin-top:18px">Veredito para exchange (modelo Poisson · últimos ${em.n} x ${ev.n} jogos)</h3>
+    <div class="tabela-scroll"><table class="comp" style="margin-top:6px">
+      <tr><th>Mercado</th><th style="text-align:center">Prob.</th><th>Sinal</th><th>Por quê</th></tr>
+      ${linha('Lay 1x0', p10, sinal(p10,.10,.14), `Chance do placar exato 1x0. Quanto menor, mais seguro o lay.`)}
+      ${linha('Lay 0x1', p01, sinal(p01,.10,.14), `Chance do placar exato 0x1.`)}
+      ${linha('Over / Under 2.5', pOver, sOver, `Probabilidade de 3+ gols: ${pct(pOver)}% · Under: ${100-pct(pOver)}%.`)}
+      ${linha(`Lay zebra (${nZebra})`, pZebra, sinal(pZebra,.18,.25), `Chance da zebra vencer. Vitória ${nm} ${pct(p1)}% · empate ${pct(pX)}% · ${nv} ${pct(p2)}%.`)}
+      ${linha('Lay goleada', gol, sinal(gol,.05,.09), `Chance de alguém marcar 4+ e vencer.`)}
+    </table></div>
+    <p style="font-size:12px;color:var(--chalk-dim);margin-top:6px">Expectativa de gols neste confronto: ${nm} <b style="color:var(--amber)">${lC.toFixed(2)}</b> · ${nv} <b style="color:var(--amber)">${lF.toFixed(2)}</b>. A grade completa de placares está em <b>Placares e Modelo</b>.</p>`;
+
+  const esc = s => (s||'').replace(/'/g, String.fromCharCode(92,39));
+  return `<h3 class="jg-titulo-central">O que os números dizem sobre este jogo?</h3>
+    <div class="jg-cards">${cards.join('')}</div>
+    ${veredito}
+    <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="mini" onclick="analisarComIA('${esc(nm)}','${esc(nv)}','${esc(j.liga)}', this)" style="border-color:#8e7cff;color:#8e7cff">🤖 Analisar com IA (Gemini)</button>
+      <button class="mini" onclick="copiarPrompt('${esc(nm)}','${esc(nv)}','${esc(j.liga)}', this)">🧠 Copiar prompt p/ análise completa</button>
+    </div>
+    <div id="ficha-ia-resultado">${d.iaHtml||''}</div>`;
+}
+
+// ---------- ESTATÍSTICAS (Geral / Casa / Fora) ----------
+async function carregarTempJogo(){
+  const d = jogoDados; if (!d || d.temp || d.tempCarregando) return;
+  const j = d.j;
+  if (!j.mandante_id && !j.visitante_id){ d.temp = { m:null, v:null }; return; }
+  d.tempCarregando = true;
+  try{
+    const params = (id) => { const p = { acao:'analise_completa', time_id: id }; if (j.liga_id) p.liga_id = j.liga_id; if (j.season) p.season = j.season; return p; };
+    const [tm, tv] = await Promise.all([
+      j.mandante_id ? chamarEdge(params(j.mandante_id)) : Promise.resolve({}),
+      j.visitante_id ? chamarEdge(params(j.visitante_id)) : Promise.resolve({}),
+    ]);
+    d.temp = { m: tm.resumo||null, v: tv.resumo||null };
+  } catch(_){ d.temp = { m:null, v:null }; }
+  d.tempCarregando = false;
+  if (jogoDados === d && jogoUI.principal==='matchodds' && (jogoUI.sub==='estat' || jogoUI.sub==='ia')) renderJogoConteudo();
+}
+function renderJogoEstat(){
+  const d = jogoDados, j = d.j, nm = j.mandante, nv = j.visitante, f = jogoUI.filtro;
+  const setM = jgFiltra(d.rmJogos, nm, j.mandante_id, f), setV = jgFiltra(d.rvJogos, nv, j.visitante_id, f);
+  const em = calcRecorte(setM, nm, j.mandante_id), ev = calcRecorte(setV, nv, j.visitante_id);
+  const { lC, lF } = jgLambdas(em.n?em:calcRecorte(d.rmJogos,nm,j.mandante_id), ev.n?ev:calcRecorte(d.rvJogos,nv,j.visitante_id));
+  const btn = (id, nome) => `<button class="jg-filtro ${f===id?'on':''}" onclick="trocaJogoFiltro('${id}')">${nome}</button>`;
+  const th = t => `<th>${t}</th>`;
+  const bloco = (cor, e, nome, aFavor, contra) => {
+    if (!e.n) return `<div class="jg-barra ${cor}">${nome}</div><p class="msg-vazia">Sem jogos neste recorte.</p>`;
+    const semHt = !e.nHt;
+    return `<div class="jg-barra ${cor}">Geral ${nome} <small>(${e.n} jogos)</small></div>
+      <div class="tabela-scroll"><table class="jg-tab">
+        <tr>${th('Vitórias (%)')}${th('Empates (%)')}${th('Derrotas (%)')}${th('Marcou Gols (%)')}${th('Sofreu Gols (%)')}${th('Ambas Marcam (%)')}${th('Sem Sofrer (%)')}${th('Média Gols Marcados')}${th('Média Gols Sofridos')}${th('Média Total de Gols')}${th('Expectativa de Gols a Favor Neste Confronto')}${th('Expectativa de Gols Contra Neste Confronto')}</tr>
+        <tr><td>${jgPct(e.pctVit)}</td><td><b style="color:var(--amber)">${e.pctEmp}%</b></td><td>${jgPct(e.pctDer,false)}</td><td>${jgPct(e.pctMarcou)}</td><td>${jgPct(e.pctSofreu,false)}</td><td><b style="color:var(--amber)">${e.pctBtts}%</b></td><td>${jgPct(e.pctCS)}</td><td>${e.mediaPro}</td><td>${e.mediaContra}</td><td><b>${e.mediaTotal}</b></td><td><b style="color:var(--amber)">${aFavor.toFixed(2)}</b></td><td><b style="color:var(--amber)">${contra.toFixed(2)}</b></td></tr>
+      </table></div>
+      <div class="jg-barra ${cor} sub">1º Tempo ${semHt?'<small>(sem placar de intervalo na base)</small>':`<small>(${e.nHt} jogos com HT)</small>`}</div>
+      ${semHt ? '' : `<div class="tabela-scroll"><table class="jg-tab">
+        <tr>${th('Venceu')}${th('Empatou')}${th('Perdeu')}${th('Marcou Gols (%)')}${th('Sofreu Gols (%)')}${th('Over 0.5 HT (%)')}${th('Over 1.5 HT (%)')}${th('Gols Marcados')}${th('Gols Sofridos')}${th('Média de Gols Marcados')}${th('Média de Gols Sofridos')}${th('Média Total HT')}</tr>
+        <tr><td>${jgPct(e.htPctV)}</td><td><b style="color:var(--amber)">${e.htPctE}%</b></td><td>${jgPct(e.htPctD,false)}</td><td>${jgPct(e.htPctMarcou)}</td><td>${jgPct(e.htPctSofreu,false)}</td><td>${jgPct(e.htPctOver05)}</td><td>${jgPct(e.htPctOver15)}</td><td>${e.htGp}</td><td>${e.htGc}</td><td>${e.htMediaPro}</td><td>${e.htMediaContra}</td><td><b>${e.htMediaTotal}</b></td></tr>
+      </table></div>
+      <div class="jg-barra ${cor} sub">2º Tempo</div>
+      <div class="tabela-scroll"><table class="jg-tab">
+        <tr>${th('Venceu')}${th('Empatou')}${th('Perdeu')}${th('Marcou Gols (%)')}${th('Sofreu Gols (%)')}${th('Saiu Gol no 2ºT (%)')}${th('Gols Marcados')}${th('Gols Sofridos')}${th('Média de Gols Marcados')}${th('Média de Gols Sofridos')}${th('Média Total 2ºT')}</tr>
+        <tr><td>${jgPct(e.stPctV)}</td><td><b style="color:var(--amber)">${e.stPctE}%</b></td><td>${jgPct(e.stPctD,false)}</td><td>${jgPct(e.stPctMarcou)}</td><td>${jgPct(e.stPctSofreu,false)}</td><td>${jgPct(e.stPctOver05)}</td><td>${e.stGp}</td><td>${e.stGc}</td><td>${e.stMediaPro}</td><td>${e.stMediaContra}</td><td><b>${e.stMediaTotal}</b></td></tr>
+      </table></div>`}
+      <div class="jg-barra ${cor} sub">Over / Under (jogo todo)</div>
+      <div class="tabela-scroll"><table class="jg-tab">
+        <tr>${th('Linha')}${[0.5,1.5,2.5,3.5,4.5].map(l=>th(l)).join('')}</tr>
+        <tr><td style="color:var(--green)"><b>Over</b></td>${[0.5,1.5,2.5,3.5,4.5].map(l=>`<td>${jgPct(e.pctOver[l])}</td>`).join('')}</tr>
+        <tr><td style="color:var(--red)"><b>Under</b></td>${[0.5,1.5,2.5,3.5,4.5].map(l=>`<td>${jgPct(100-e.pctOver[l])}</td>`).join('')}</tr>
+      </table></div>`;
+  };
+  // tempo dos gols (temporada — vem da API, não muda com o filtro)
+  const faixas = ['0-15','16-30','31-45','46-60','61-75','76-90+'];
+  const chaves = ['0-15','16-30','31-45','46-60','61-75','76-90'];
+  const minutos = (cor, nome, res) => {
+    if (!d.temp){ if (!d.tempCarregando) carregarTempJogo(); return `<div class="jg-barra ${cor} sub">Tempo dos Gols (min) — temporada</div><p class="msg-vazia">⏳ Buscando minutagem dos gols na API…</p>`; }
+    const gp = res?.golsProMinuto, gc = res?.golsContraMinuto;
+    const toggle = `<span class="jg-toggle"><button class="${jogoUI.minutos==='n'?'on':''}" onclick="trocaJogoMinutos('n')">Nº</button><button class="${jogoUI.minutos==='p'?'on':''}" onclick="trocaJogoMinutos('p')">%</button></span>`;
+    if (!gp && !gc) return `<div class="jg-barra ${cor} sub">Tempo dos Gols (min) — temporada</div><p class="msg-vazia">Sem minutagem para ${nome} (time sem id na API ou temporada sem cobertura).</p>`;
+    const val = (obj,k) => { const t = parseInt(obj?.[k]?.total)||0; if (jogoUI.minutos==='n') return t; const tot = chaves.reduce((s,c)=>s+(parseInt(obj?.[c]?.total)||0),0); return tot?Math.round(t/tot*100)+'%':'0%'; };
+    return `<div class="jg-barra ${cor} sub" style="display:flex;justify-content:space-between;align-items:center">Tempo dos Gols (min) — temporada ${toggle}</div>
+      <div class="tabela-scroll"><table class="jg-tab">
+        <tr>${th('Status')}${faixas.map(th).join('')}</tr>
+        <tr><td style="color:var(--green)"><b>Marcou</b></td>${chaves.map(k=>`<td style="color:var(--green)"><b>${val(gp,k)}</b></td>`).join('')}</tr>
+        <tr><td style="color:var(--red)"><b>Sofreu</b></td>${chaves.map(k=>`<td style="color:var(--red)"><b>${val(gc,k)}</b></td>`).join('')}</tr>
+      </table></div>`;
+  };
+  const rotulo = f==='casa' ? 'jogos em casa de cada time' : f==='fora' ? 'jogos fora de cada time' : 'todos os últimos jogos';
+  return `<div class="jg-filtros">${btn('geral','GERAL')}${btn('casa','CASA')}${btn('fora','FORA')}<span style="font-size:12px;color:var(--chalk-dim)">${rotulo}</span></div>
+    ${bloco('verde', em, nm, lC, lF)}
+    ${minutos('verde', nm, d.temp?.m)}
+    <div style="height:18px"></div>
+    ${bloco('azul', ev, nv, lF, lC)}
+    ${minutos('azul', nv, d.temp?.v)}
+    <p style="font-size:12px;color:var(--chalk-dim);margin-top:12px">Percentuais: <span style="color:var(--green)">verde ≥ 60%</span> · <span style="color:var(--amber)">amarelo 40–59%</span> · <span style="color:var(--red)">vermelho &lt; 40%</span> (invertido nas colunas de sofrer/perder). Expectativa de gols = média do ataque de um com a defesa do outro, ajustada pelo mando.</p>`;
+}
+
+// ---------- RACE 10 ----------
+function renderJogoRace(){
+  const d = jogoDados, j = d.j;
+  const coluna = (lado, nome, id, jogos, filtro) => {
+    const pre = lado==='m' ? 'CASA' : 'FORA';
+    const btn = (f, rot) => `<button class="jg-filtro ${filtro===f?'on':''}" onclick="trocaJogoRace('${lado}','${f}')">${pre} - ${rot}</button>`;
+    const lista = jgFiltra(jogos, nome, id, filtro==='mandante'?'casa':filtro==='visitante'?'fora':'geral').slice(0,10);
+    const linhas = lista.map(g => {
+      const m = jgEhMandante(g, nome, id);
+      const pro = m ? g.gols_mandante : g.gols_visitante, con = m ? g.gols_visitante : g.gols_mandante;
+      const res = pro==null ? '-' : pro>con ? 'V' : pro<con ? 'D' : 'E';
+      const cls = res==='V'?'v':res==='D'?'d':res==='E'?'e':'';
+      const ht = (x) => x==null ? '' : `<span style="color:var(--chalk-dim)">(${x})</span> `;
+      return `<tr>
+        <td class="jg-race-data">${jgData(g.data)}</td>
+        <td><div class="${m?'jg-eu':''}">${g.mandante}</div><div class="${!m?'jg-eu':''}">${g.visitante}</div></td>
+        <td class="jg-race-placar"><div>${ht(g.ht_mandante)}${g.gols_mandante??'-'}</div><div>${ht(g.ht_visitante)}${g.gols_visitante??'-'}</div></td>
+        <td style="text-align:center"><span class="jg-res ${cls}">${res}</span></td>
+      </tr>`;
+    }).join('');
+    const e = calcRecorte(lista, nome, id);
+    const resumo = e.n ? `<div class="jg-race-resumo"><span>${e.v}V ${e.e}E ${e.d}D</span><span>aprov. <b style="color:${jgCor(e.aprov)}">${e.aprov}%</b></span><span>gols <b>${e.mediaPro}</b> / <b>${e.mediaContra}</b></span><span>over 2.5 <b>${e.pctOver[2.5]}%</b></span><span>ambas <b>${e.pctBtts}%</b></span></div>` : '';
+    return `<div class="jg-race-col">
+      <div class="jg-filtros">${btn('geral','GERAL')}${btn('mandante','MANDANTE')}${btn('visitante','VISITANTE')}</div>
+      <div class="tabela-scroll"><table class="jg-tab jg-race">
+        <tr><th>Data</th><th>Confronto</th><th>Placares (HT)/FT</th><th style="text-align:center">Result.</th></tr>
+        ${linhas || '<tr><td colspan="4" class="msg-vazia">Sem jogos neste recorte.</td></tr>'}
+      </table></div>
+      ${resumo}
+    </div>`;
+  };
+  return `<div class="jg-race-grid">
+      ${coluna('m', j.mandante, j.mandante_id, d.rmJogos, jogoUI.raceM)}
+      ${coluna('v', j.visitante, j.visitante_id, d.rvJogos, jogoUI.raceV)}
+    </div>
+    <p style="font-size:12px;color:var(--chalk-dim);margin-top:10px">Últimos 10 jogos de cada equipe (do mais recente para trás). Time analisado em destaque. Placar de intervalo entre parênteses quando disponível.</p>`;
+}
+
+// ---------- CONFRONTO DIRETO ----------
+function renderJogoH2H(){
+  const d = jogoDados, j = d.j, nm = j.mandante, nv = j.visitante;
+  const h = d.h2h || [];
+  if (!h.length) return `<p class="msg-vazia">Sem confrontos diretos recentes na base para ${nm} x ${nv}.</p>`;
+  const norm = s => (s||'').toLowerCase();
+  const tok = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').split(/\s+/).filter(p=>p.length>=4)[0] || s;
+  const tA = norm(tok(nm));
+  let vA=0, vB=0, emp=0, gols=0, over25=0, btts=0, n=0, ht=0, nHt=0, zeros=0;
+  const overCount = {0.5:0,1.5:0,2.5:0,3.5:0,4.5:0};
+  const linhas = h.map(g => {
+    const gm = g.gm, gv = g.gv;
+    if (gm==null || gv==null) return '';
+    const mandEhA = (j.mandante_id && String(g.mandante_id)===String(j.mandante_id)) || norm(g.mandante).includes(tA);
+    const ga = mandEhA ? gm : gv, gb = mandEhA ? gv : gm;
+    let cls='e'; if (ga>gb){cls='v';vA++;} else if (ga<gb){cls='d';vB++;} else emp++;
+    n++; gols+=gm+gv; if (gm+gv>=3) over25++; if (gm>0&&gv>0) btts++; if (gm+gv===0) zeros++;
+    [0.5,1.5,2.5,3.5,4.5].forEach(l=>{ if (gm+gv>l) overCount[l]++; });
+    const temHt = g.htm!=null && g.htv!=null; if (temHt){ ht+=g.htm+g.htv; nHt++; }
+    return `<tr>
+      <td class="jg-race-data">${jgData(g.data)}</td>
+      <td style="font-size:12px;color:var(--chalk-dim)">${g.liga||''}</td>
+      <td class="${mandEhA?'jg-eu':''}">${g.mandante}</td>
+      <td class="jg-race-placar" style="text-align:center"><b>${gm}x${gv}</b> ${temHt?`<span style="color:var(--chalk-dim);font-size:11px">(${g.htm}x${g.htv})</span>`:''}</td>
+      <td class="${!mandEhA?'jg-eu':''}">${g.visitante}</td>
+      <td style="text-align:center"><span class="jg-res ${cls}">${cls.toUpperCase()}</span></td>
+    </tr>`;
+  }).join('');
+  const pc = x => n?Math.round(x/n*100):0;
+  return `<div class="jg-h2h-placar">
+      <div class="jg-h2h-lado"><b>${vA}</b><span>vitórias ${nm}</span></div>
+      <div class="jg-h2h-lado"><b>${emp}</b><span>empates</span></div>
+      <div class="jg-h2h-lado"><b>${vB}</b><span>vitórias ${nv}</span></div>
+    </div>
+    <div class="tabela-scroll"><table class="jg-tab jg-race">
+      <tr><th>Data</th><th>Competição</th><th>Mandante</th><th style="text-align:center">Placar (HT)</th><th>Visitante</th><th style="text-align:center">${nm}</th></tr>
+      ${linhas}
+    </table></div>
+    <div class="jg-barra verde sub" style="margin-top:14px">Gols nos ${n} confrontos</div>
+    <div class="tabela-scroll"><table class="jg-tab">
+      <tr><th>Linha</th>${[0.5,1.5,2.5,3.5,4.5].map(l=>`<th>${l}</th>`).join('')}<th>Média FT</th><th>Média HT</th><th>Ambas</th><th>0x0</th></tr>
+      <tr><td style="color:var(--green)"><b>Over</b></td>${[0.5,1.5,2.5,3.5,4.5].map(l=>`<td>${jgPct(pc(overCount[l]))}</td>`).join('')}<td rowspan="2"><b style="color:var(--amber)">${n?(gols/n).toFixed(2):'—'}</b></td><td rowspan="2"><b style="color:var(--amber)">${nHt?(ht/nHt).toFixed(2):'—'}</b></td><td rowspan="2"><b>${pc(btts)}%</b></td><td rowspan="2"><b>${zeros}</b></td></tr>
+      <tr><td style="color:var(--red)"><b>Under</b></td>${[0.5,1.5,2.5,3.5,4.5].map(l=>`<td>${jgPct(100-pc(overCount[l]))}</td>`).join('')}</tr>
+    </table></div>
+    <p style="font-size:12px;color:var(--chalk-dim);margin-top:8px">Coluna final: resultado na perspectiva do ${nm} (mandante de hoje). Os confrontos vêm da API e do banco do sistema.</p>`;
+}
+
 
 async function estatsDetalhadas(fixtureId, botao){
   botao.disabled = true; botao.textContent = '⏳ Buscando…';
