@@ -1061,6 +1061,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.70</b></td><td><b>Colheita automática de resultados</b>: uma vez por dia, ao abrir o site, os últimos 2 dias são recarregados em segundo plano (2 requisições) e os placares finais gravados no banco. Os "últimos jogos" ficam em dia sem precisar colher na mão; o botão da ficha segue disponível para dias mais antigos.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.69</b></td><td><b>Últimos jogos sempre atualizados</b>: o histórico agora junta a função Edge com a tabela jogos_dia (atualizada a cada grade carregada), remove duplicados e ordena por data — vale para a tela do jogo, o modal de jogos anteriores das Sugestões e a Análise da rodada. A ficha ainda detecta dias com jogos disputados sem placar colhido e oferece o botão "Colher resultados agora".</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.68</b></td><td>Tela do jogo turbinada: <b>escudos dos clubes</b> (API-Football), novas abas <b>Desempenho</b> (por tempo + HT→FT), <b>Gols</b> (momentos dos gols, over/under), <b>Cartões</b> (linhas 0.5–8.5 e médias), <b>Jogadores</b> (rankings dos dois elencos), <b>Jogos da Liga</b> (rodada clicável) e <b>Tabela</b> (classificação calculada do banco). Botão para buscar até 20 confrontos diretos na API e mensagens claras quando um time está sem histórico.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.67</b></td><td>Nova <b>tela do jogo</b>: ao clicar em um confronto abre uma ficha em abas — <b>Análise MatchOdds</b> (Análise I.A. com tendências automáticas e veredito de exchange, Estatísticas com filtro Geral/Casa/Fora e 1º/2º tempo, Race 10 dos dois times e Confronto Direto) e <b>Placares e Modelo</b> (Poisson, grade de placares, lay goleada).</td></tr>
@@ -1662,7 +1663,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.69";
+const APP_VERSAO = "v4.70";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -7089,6 +7090,31 @@ function trocaAjuda(id){
 window.trocaAjuda = trocaAjuda;
 // mostra o primeiro conteúdo quando a aba abre
 document.addEventListener('DOMContentLoaded', () => { if ($('ajuda-conteudo')) trocaAjuda('fluxos'); if (typeof restaurarGruposMenu === 'function') restaurarGruposMenu(); });
+
+// ==========================================================
+// COLHEITA AUTOMÁTICA (v4.70) — 1x por dia, ao abrir o site,
+// recarrega os últimos 2 dias em segundo plano e grava os
+// placares finais no banco (2 requisições). Mantém os
+// "últimos jogos" atualizados sem ação manual.
+// ==========================================================
+async function autoColheitaDiaria(){
+  const hoje = new Date().toISOString().slice(0,10);
+  let ultima = '';
+  try{ ultima = localStorage.getItem('auto_colheita') || ''; }catch(_){ }
+  if (ultima === hoje) return; // já rodou hoje
+  try{ localStorage.setItem('auto_colheita', hoje); }catch(_){ }
+  const medidor = $('cota-medidor');
+  for (let i = 1; i <= 2; i++){
+    const dia = new Date(Date.now() - i*86400000).toISOString().slice(0,10);
+    try{
+      if (medidor) medidor.title = `Colheita automática: atualizando ${dia}…`;
+      const r = await chamarEdge({ acao:'grade', data: dia, forcar: 1 });
+      if (r.aviso && String(r.aviso).includes('indisponível')) break; // cota esgotada — tenta de novo amanhã
+    } catch(_){ break; }
+  }
+  if (medidor) medidor.title = 'Clique para atualizar';
+}
+setTimeout(autoColheitaDiaria, 4000); // espera o site abrir antes de rodar
 setTimeout(() => { if ($('ajuda-conteudo') && !$('ajuda-conteudo').innerHTML) trocaAjuda('fluxos'); }, 500);
 
 
