@@ -1079,6 +1079,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.73</b></td><td>Correções na atualização dos históricos: a aba <b>📊 Histórico 10 jogos</b> agora também junta banco + Edge; jogos de dias anteriores presos com status "ao vivo" no banco entram no histórico (com o placar gravado); a colheita automática e o botão da ficha completam <b>todos</b> os dias faltantes dos últimos 30 de uma vez (antes paravam em 12 e 7).</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.72</b></td><td><b>Dias faltantes preenchidos sozinhos</b>: o site verifica os últimos 30 dias, acha dias sem grade no banco ou com jogos sem placar final e baixa só o que falta — até 12 por dia na abertura (automático) e completo pelo novo botão <b>🧩 Completar dias faltantes (30d)</b> na aba Histórico. O aviso da ficha agora inclui esses dias.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.71</b></td><td>Nova aba <b>🔔 Lembretes de pagamento</b>: assinaturas do projeto (API-Football, CS Score, Radar Oráculo e o que mais você cadastrar) com próximo vencimento calculado pelo dia do mês, cores por proximidade e bolinha vermelha no menu quando algo vence em até 3 dias. Editável e salvo no navegador.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.70</b></td><td><b>Colheita automática de resultados</b>: uma vez por dia, ao abrir o site, os últimos 2 dias são recarregados em segundo plano (2 requisições) e os placares finais gravados no banco. Os "últimos jogos" ficam em dia sem precisar colher na mão; o botão da ficha segue disponível para dias mais antigos.</td></tr>
@@ -1683,7 +1684,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.72";
+const APP_VERSAO = "v4.73";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2174,11 +2175,18 @@ async function historicoCompleto(nome, id){
   let extras = [];
   try{
     const ini = new Date(Date.now() - 120*86400000).toISOString().slice(0,10);
-    let q = db.from('jogos_dia').select('*').in('status',['FT','AET','PEN']).gte('data_jogo', ini);
+    const hojeStr = new Date().toISOString().slice(0,10);
+    let q = db.from('jogos_dia').select('*')
+      .in('status',['FT','AET','PEN','1H','2H','HT','ET','P','BT','LIVE','INT'])
+      .gte('data_jogo', ini);
     if (id) q = q.or(`mandante_id.eq.${id},visitante_id.eq.${id}`);
     else { const t = _hcToken(nome); q = q.or(`mandante.ilike.%${t}%,visitante.ilike.%${t}%`); }
-    const { data } = await q.order('data_jogo', {ascending:false}).limit(60);
-    extras = (data||[]).map(g => {
+    const { data } = await q.order('data_jogo', {ascending:false}).limit(80);
+    extras = (data||[]).filter(g => {
+      // status "ao vivo" só entra se o jogo é de dias anteriores (status preso no banco) e tem placar
+      if (['FT','AET','PEN'].includes(g.status)) return true;
+      return g.data_jogo < hojeStr && ((g.placar && g.placar !== '-') || g.gols_mandante != null);
+    }).map(g => {
       let gm = g.gols_mandante, gv = g.gols_visitante;
       if (gm==null || gv==null){ const pl = (g.placar||'').split('x').map(Number); gm = pl[0]; gv = pl[1]; }
       if (gm==null || gv==null || isNaN(gm) || isNaN(gv)) return null;
@@ -2218,7 +2226,7 @@ async function datasPendentesDoTime(nome, id){
 }
 async function colherDatasPendentes(botao){
   const d = jogoDados; if (!d?.pendentes?.length) return;
-  const datas = d.pendentes.slice(0, 7);
+  const datas = d.pendentes.slice(0, 30);
   botao.disabled = true;
   for (let i = 0; i < datas.length; i++){
     botao.textContent = `⏳ Colhendo ${datas[i]} (${i+1}/${datas.length})…`;
@@ -2611,7 +2619,7 @@ function renderTelaJogo(){
 }
 function montarAvisoPendencias(){
   const d = jogoDados; if (!d?.pendentes?.length) return '';
-  const n = Math.min(d.pendentes.length, 7);
+  const n = Math.min(d.pendentes.length, 30);
   return `<div class="aviso" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="flex:1">⚠️ Há <b>${d.pendentes.length} dia(s)</b> dos últimos 30 sem grade no banco ou com jogos sem placar colhido — os "últimos jogos" podem estar desatualizados.</span>
     <button class="mini" onclick="colherDatasPendentes(this)" style="border-color:var(--amber);color:var(--amber)">🔄 Colher resultados agora (${n} ${n>1?'requisições':'requisição'})</button>
@@ -3690,9 +3698,8 @@ $('btn-historico').addEventListener('click', async () => {
   const botao = $('btn-historico'); botao.disabled = true;
   aviso($('h-aviso'), ''); $('h-resumo').innerHTML=''; $('h-tabela').innerHTML='';
   try{
-    const r = await chamarEdge({ acao:'historico', time });
-    if (r.aviso) aviso($('h-aviso'), r.aviso, 'erro');
-    else if (!r.jogos?.length) aviso($('h-aviso'), `Sem histórico retornado para "${time}".`, 'erro');
+    const r = await historicoCompleto(time, null);
+    if (!r.jogos?.length) aviso($('h-aviso'), `Sem histórico retornado para "${time}".`, 'erro');
     if (!r.jogos?.length){ botao.disabled=false; return; }
     _histJogos = r.jogos; _histTime = r.time || time;
     renderHistorico('todos');
@@ -7294,7 +7301,7 @@ async function autoColheitaDiaria(){
   }
   // além de ontem/anteontem, completa até 12 dias faltantes ou incompletos dos últimos 30
   try{
-    const r = await completarDiasFaltantes(12, (dia, i, tot) => { if (medidor) medidor.title = `Colheita automática: completando ${dia} (${i}/${tot})…`; });
+    const r = await completarDiasFaltantes(30, (dia, i, tot) => { if (medidor) medidor.title = `Colheita automática: completando ${dia} (${i}/${tot})…`; });
     if (r.feitos && medidor) medidor.title = `Colheita automática: ${r.feitos} dia(s) completados. Clique para atualizar a cota.`;
   } catch(_){ }
   if (medidor) medidor.title = 'Clique para atualizar';
