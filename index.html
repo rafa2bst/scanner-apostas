@@ -431,6 +431,7 @@
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
       <button class="acao" id="btn-grade">Carregar grade</button>
+      <button class="acao" id="btn-puxar-jogos" style="background:transparent;border:1px solid var(--green);color:var(--green)" title="Verifica os últimos 30 dias, encontra dias sem grade no banco ou com jogos sem placar final e baixa só o que falta (1 requisição por dia)">🧩 Puxar jogos que faltam (30d)</button>
       <button class="mini" id="btn-intervalo" style="border-color:var(--amber);color:var(--amber)">📅 Carregar intervalo de datas</button>
       <button class="mini" id="btn-gerenciar-ligas" style="border-color:var(--amber);color:var(--amber)">⚙️ Escolher meus campeonatos</button>
     </div>
@@ -1079,6 +1080,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.74</b></td><td>Botão <b>🧩 Puxar jogos que faltam (30d)</b> direto na Grade do dia — mesmo recurso do Completar dias faltantes, agora à mão no grupo Cadastros, com progresso no próprio botão.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.73</b></td><td>Correções na atualização dos históricos: a aba <b>📊 Histórico 10 jogos</b> agora também junta banco + Edge; jogos de dias anteriores presos com status "ao vivo" no banco entram no histórico (com o placar gravado); a colheita automática e o botão da ficha completam <b>todos</b> os dias faltantes dos últimos 30 de uma vez (antes paravam em 12 e 7).</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.72</b></td><td><b>Dias faltantes preenchidos sozinhos</b>: o site verifica os últimos 30 dias, acha dias sem grade no banco ou com jogos sem placar final e baixa só o que falta — até 12 por dia na abertura (automático) e completo pelo novo botão <b>🧩 Completar dias faltantes (30d)</b> na aba Histórico. O aviso da ficha agora inclui esses dias.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.71</b></td><td>Nova aba <b>🔔 Lembretes de pagamento</b>: assinaturas do projeto (API-Football, CS Score, Radar Oráculo e o que mais você cadastrar) com próximo vencimento calculado pelo dia do mês, cores por proximidade e bolinha vermelha no menu quando algo vence em até 3 dias. Editável e salvo no navegador.</td></tr>
@@ -1684,7 +1686,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.73";
+const APP_VERSAO = "v4.74";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -3656,19 +3658,25 @@ $('btn-colher').addEventListener('click', async () => {
   finally{ b.disabled = false; }
 });
 
-$('btn-completar').addEventListener('click', async () => {
-  const b = $('btn-completar'); b.disabled = true;
+async function completarFaltantesUI(botao, alvoAviso){
+  botao.disabled = true;
+  const textoOriginal = botao.textContent;
   try{
-    aviso($('h-aviso'), '⏳ Verificando os últimos 30 dias no banco…');
+    aviso(alvoAviso, '⏳ Verificando os últimos 30 dias no banco…');
     const dias = await diasFaltantesGerais(30);
-    if (!dias.length){ aviso($('h-aviso'), '✅ Nenhum dia faltante — os últimos 30 dias estão completos no banco.'); b.disabled = false; return; }
-    const r = await completarDiasFaltantes(30, (dia, i, tot) => aviso($('h-aviso'), `⏳ Baixando ${dia} (${i}/${tot})…`));
-    if (r.cota) aviso($('h-aviso'), `⚠️ Cota da API esgotada. Completei ${r.feitos} dia(s); rode de novo amanhã para o resto.`, 'erro');
-    else if (r.erro) aviso($('h-aviso'), `⚠️ Erro no meio do caminho. Completei ${r.feitos} dia(s) — rode de novo para continuar.`, 'erro');
-    else aviso($('h-aviso'), `✅ ${r.feitos} dia(s) baixados. Os últimos 30 dias estão completos — históricos e últimos jogos atualizados.`);
-  } catch(e){ aviso($('h-aviso'), 'Falha: '+e.message, 'erro'); }
-  finally{ b.disabled = false; }
-});
+    if (!dias.length){ aviso(alvoAviso, '✅ Nenhum dia faltante — os últimos 30 dias estão completos no banco.'); return; }
+    const r = await completarDiasFaltantes(30, (dia, i, tot) => {
+      aviso(alvoAviso, `⏳ Baixando ${dia} (${i}/${tot})…`);
+      botao.textContent = `⏳ ${i}/${tot}…`;
+    });
+    if (r.cota) aviso(alvoAviso, `⚠️ Cota da API esgotada. Completei ${r.feitos} dia(s); rode de novo amanhã para o resto.`, 'erro');
+    else if (r.erro) aviso(alvoAviso, `⚠️ Erro no meio do caminho. Completei ${r.feitos} dia(s) — rode de novo para continuar.`, 'erro');
+    else aviso(alvoAviso, `✅ ${r.feitos} dia(s) baixados. Os últimos 30 dias estão completos — históricos e últimos jogos atualizados.`);
+  } catch(e){ aviso(alvoAviso, 'Falha: '+e.message, 'erro'); }
+  finally{ botao.disabled = false; botao.textContent = textoOriginal; }
+}
+$('btn-completar').addEventListener('click', () => completarFaltantesUI($('btn-completar'), $('h-aviso')));
+$('btn-puxar-jogos').addEventListener('click', () => completarFaltantesUI($('btn-puxar-jogos'), $('grade-aviso')));
 
 $('btn-fdorg').addEventListener('click', async () => {
   const b = $('btn-fdorg'); b.disabled = true;
