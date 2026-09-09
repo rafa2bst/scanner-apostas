@@ -1081,6 +1081,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.77</b></td><td>As <b>Sugestões do dia, TOP do dia e demais funis</b> passam a usar a mesma fonte completa de histórico das fichas (Edge + banco + busca direta na API) — antes ainda liam só a Edge e podiam sugerir com dados velhos. Cache de estatísticas encurtado (24h/2h) para acompanhar.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.76</b></td><td><b>Busca direta na API-Football</b> (solução definitiva para históricos desatualizados): salvando sua chave da API no botão 🔑 (aba Histórico ou no aviso da ficha), o site busca os últimos 15 jogos de cada time direto na API — sem depender da Edge nem de grades carregadas. Cache de 30 min por time, e o resultado ainda é gravado no banco para as outras telas. Se a ficha detectar histórico parado há 4+ dias, ela completa sozinha pela API.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.75</b></td><td><b>Colheita sem depender de clique</b>: a varredura de dias faltantes roda em toda abertura do site enquanto houver buraco (não mais 1x por dia), o guard diário só é gravado quando a colheita completa de verdade, e a ficha do jogo colhe os dias pendentes sozinha ao detectar — o aviso vira indicador de progresso e a ficha recarrega ao terminar.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.74</b></td><td>Botão <b>🧩 Puxar jogos que faltam (30d)</b> direto na Grade do dia — mesmo recurso do Completar dias faltantes, agora à mão no grupo Cadastros, com progresso no próprio botão.</td></tr>
@@ -1689,7 +1690,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.76";
+const APP_VERSAO = "v4.77";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -3520,7 +3521,7 @@ async function estatisticasComCache(time, id, jogosSaoPassados){
   // 1) tenta o cache do banco (acelerador — se falhar, segue pra API normalmente)
   if (chave){
     try{
-      const validade = jogosSaoPassados ? 7*86400000 : 6*3600000;
+      const validade = jogosSaoPassados ? 24*3600000 : 2*3600000;
       const { data } = await db.from('cache_stats_gols').select('*').eq('time_chave', chave).limit(1);
       if (data?.length && (Date.now()-new Date(data[0].atualizado_em).getTime()) < validade && data[0].stats_json){
         // clona e força o nome correto (nunca reusa _nome de outro time)
@@ -3529,10 +3530,9 @@ async function estatisticasComCache(time, id, jogosSaoPassados){
       }
     }catch(_){}
   }
-  // 2) busca na API (comportamento principal — sempre funciona mesmo sem cache)
+  // 2) busca completa: Edge + jogos_dia + API direta quando o histórico está velho
   try{
-    const p = { acao:'historico', time }; if (id) p.id = id;
-    const r = await chamarEdge(p);
+    const r = await historicoCompleto(time, id);
     if ((r.jogos?.length??0) < 4) return null;
     const st = estatisticas(r.jogos);
     st._nome = r.time || time;
