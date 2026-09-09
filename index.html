@@ -1061,6 +1061,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.69</b></td><td><b>Últimos jogos sempre atualizados</b>: o histórico agora junta a função Edge com a tabela jogos_dia (atualizada a cada grade carregada), remove duplicados e ordena por data — vale para a tela do jogo, o modal de jogos anteriores das Sugestões e a Análise da rodada. A ficha ainda detecta dias com jogos disputados sem placar colhido e oferece o botão "Colher resultados agora".</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.68</b></td><td>Tela do jogo turbinada: <b>escudos dos clubes</b> (API-Football), novas abas <b>Desempenho</b> (por tempo + HT→FT), <b>Gols</b> (momentos dos gols, over/under), <b>Cartões</b> (linhas 0.5–8.5 e médias), <b>Jogadores</b> (rankings dos dois elencos), <b>Jogos da Liga</b> (rodada clicável) e <b>Tabela</b> (classificação calculada do banco). Botão para buscar até 20 confrontos diretos na API e mensagens claras quando um time está sem histórico.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.67</b></td><td>Nova <b>tela do jogo</b>: ao clicar em um confronto abre uma ficha em abas — <b>Análise MatchOdds</b> (Análise I.A. com tendências automáticas e veredito de exchange, Estatísticas com filtro Geral/Casa/Fora e 1º/2º tempo, Race 10 dos dois times e Confronto Direto) e <b>Placares e Modelo</b> (Poisson, grade de placares, lay goleada).</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v3.80</b></td><td>Nova aba <b>📲 Sugestões do bot</b>: separa os alertas do vigia das sugestões manuais, com resumo de green/red, taxa de acerto e marcação de "peguei". Filtro de origem também no Histórico de sugestões.</td></tr>
@@ -1661,7 +1662,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.68";
+const APP_VERSAO = "v4.69";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2129,6 +2130,85 @@ function ultimos5(jogos){
     `${g.data.slice(5)} · ${g.mandante} <b>${g.gols_mandante}x${g.gols_visitante}</b> ${g.visitante}`
   ).join('<br>');
 }
+
+// ==========================================================
+// HISTÓRICO COMPLETO (v4.69) — junta a Edge com a tabela jogos_dia
+// A Edge pode estar defasada (depende do backfill); a jogos_dia é
+// atualizada toda vez que uma grade é carregada. Junta as duas,
+// remove duplicados e ordena do mais recente para trás.
+// ==========================================================
+function _hcNorm(s){ return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim(); }
+function _hcToken(s){ return _hcNorm(s).split(/\s+/).filter(p=>p.length>=4)[0] || _hcNorm(s); }
+async function historicoCompleto(nome, id){
+  // 1) fonte oficial (Edge)
+  let base = { time: nome, jogos: [] };
+  try{
+    const p = { acao:'historico', time: nome }; if (id) p.id = id;
+    base = await chamarEdge(p);
+    base.jogos = base.jogos || [];
+  } catch(_){ }
+  // 2) complemento: jogos encerrados na jogos_dia (últimos 120 dias)
+  let extras = [];
+  try{
+    const ini = new Date(Date.now() - 120*86400000).toISOString().slice(0,10);
+    let q = db.from('jogos_dia').select('*').in('status',['FT','AET','PEN']).gte('data_jogo', ini);
+    if (id) q = q.or(`mandante_id.eq.${id},visitante_id.eq.${id}`);
+    else { const t = _hcToken(nome); q = q.or(`mandante.ilike.%${t}%,visitante.ilike.%${t}%`); }
+    const { data } = await q.order('data_jogo', {ascending:false}).limit(60);
+    extras = (data||[]).map(g => {
+      let gm = g.gols_mandante, gv = g.gols_visitante;
+      if (gm==null || gv==null){ const pl = (g.placar||'').split('x').map(Number); gm = pl[0]; gv = pl[1]; }
+      if (gm==null || gv==null || isNaN(gm) || isNaN(gv)) return null;
+      const ehM = id ? String(g.mandante_id)===String(id) : _hcNorm(g.mandante).includes(_hcToken(nome));
+      if (!id && !ehM && !_hcNorm(g.visitante).includes(_hcToken(nome))) return null;
+      return { data: g.data_jogo, mandante: g.mandante, visitante: g.visitante,
+        mandante_id: g.mandante_id, visitante_id: g.visitante_id,
+        gols_mandante: gm, gols_visitante: gv,
+        ht_mandante: g.ht_mandante ?? null, ht_visitante: g.ht_visitante ?? null,
+        time_era_mandante: ehM };
+    }).filter(Boolean);
+  } catch(_){ }
+  // 3) junta e remove duplicados (chave: data + par de times normalizado)
+  const chave = g => { const a = _hcToken(g.mandante), b = _hcToken(g.visitante); return `${String(g.data||'').slice(0,10)}|${[a,b].sort().join('|')}`; };
+  const mapa = new Map();
+  base.jogos.forEach(g => mapa.set(chave(g), g));
+  extras.forEach(g => { const k = chave(g); if (!mapa.has(k)) mapa.set(k, g); else {
+    const at = mapa.get(k);
+    if (at.ht_mandante==null && g.ht_mandante!=null){ at.ht_mandante = g.ht_mandante; at.ht_visitante = g.ht_visitante; }
+  }});
+  const jogos = [...mapa.values()].sort((a,b)=> String(b.data||'').localeCompare(String(a.data||'')));
+  return { time: base.time || nome, jogos };
+}
+// jogos passados que ficaram sem placar colhido no banco (grade carregada antes da bola rolar)
+async function datasPendentesDoTime(nome, id){
+  try{
+    const hoje = new Date().toISOString().slice(0,10);
+    const ini = new Date(Date.now() - 30*86400000).toISOString().slice(0,10);
+    let q = db.from('jogos_dia').select('data_jogo,status,mandante,visitante')
+      .in('status',['NS','TBD','1H','2H','HT','ET','P','BT','LIVE','INT'])
+      .gte('data_jogo', ini).lt('data_jogo', hoje);
+    if (id) q = q.or(`mandante_id.eq.${id},visitante_id.eq.${id}`);
+    else { const t = _hcToken(nome); q = q.or(`mandante.ilike.%${t}%,visitante.ilike.%${t}%`); }
+    const { data } = await q.limit(30);
+    return [...new Set((data||[]).map(g=>g.data_jogo))].sort().reverse();
+  } catch(_){ return []; }
+}
+async function colherDatasPendentes(botao){
+  const d = jogoDados; if (!d?.pendentes?.length) return;
+  const datas = d.pendentes.slice(0, 7);
+  botao.disabled = true;
+  for (let i = 0; i < datas.length; i++){
+    botao.textContent = `⏳ Colhendo ${datas[i]} (${i+1}/${datas.length})…`;
+    try{
+      const r = await chamarEdge({ acao:'grade', data: datas[i], forcar: 1 });
+      if (r.aviso && String(r.aviso).includes('indisponível')){ botao.textContent = '❌ Cota da API esgotada — tente amanhã'; return; }
+    } catch(e){ botao.textContent = '❌ '+e.message; return; }
+  }
+  botao.textContent = '✅ Colhido — recarregando a ficha…';
+  fichaJogo(d.idx);
+}
+window.colherDatasPendentes = colherDatasPendentes;
+
 async function fichaJogo(idx){
   const j = gradeJogos[idx];
   if (!j) return;
@@ -2139,9 +2219,10 @@ async function fichaJogo(idx){
   window.scrollTo({top:0, behavior:'smooth'});
   jogoUI.principal = 'matchodds'; jogoUI.sub = 'ia'; jogoUI.filtro = 'geral'; jogoUI.raceM = 'geral'; jogoUI.raceV = 'geral'; jogoUI.tempo='1'; jogoUI.ou='over'; jogoUI.ladoGols='m'; jogoUI.ladoJog='m';
   try{
-    const pm = { acao:'historico', time: j.mandante }; if (j.mandante_id) pm.id = j.mandante_id;
-    const pv = { acao:'historico', time: j.visitante }; if (j.visitante_id) pv.id = j.visitante_id;
-    const [rm, rv] = await Promise.all([chamarEdge(pm), chamarEdge(pv)]);
+    const [rm, rv] = await Promise.all([
+      historicoCompleto(j.mandante, j.mandante_id),
+      historicoCompleto(j.visitante, j.visitante_id),
+    ]);
     const o = oddsMap[j.fixture_id];
     const nm = rm.time ?? j.mandante, nv = rv.time ?? j.visitante;
 
@@ -2157,6 +2238,7 @@ async function fichaJogo(idx){
       jogoDados = { j, idx, o, rmJogos: rm.jogos||[], rvJogos: rv.jogos||[], h2h: [], temHistorico: true,
         antigo: `${oddsHtml}<p class="msg-vazia">Histórico insuficiente (${rm.jogos?.length||0} x ${rv.jogos?.length||0}). Rode o backfill/importações.</p>` };
       renderTelaJogo();
+      checarPendenciasJogo();
       return;
     }
     const em = estatCompleta(rm.jogos), ev = estatCompleta(rv.jogos);
@@ -2381,6 +2463,7 @@ async function fichaJogo(idx){
       <p style="font-size:12px;color:var(--chalk-dim);margin-top:10px">As estatísticas detalhadas (chutes, cartões, desarmes, escanteios, notas, minuto dos gols) são buscadas sob demanda — 3 requisições por jogo. No plano grátis use com parcimônia; no Pro, à vontade.</p>`;
     jogoDados = { j, idx, o, rmJogos: rm.jogos, rvJogos: rv.jogos, h2h: h2hLista, temHistorico: true, antigo, iaHtml:'', estatsHtml:'' };
     renderTelaJogo();
+    checarPendenciasJogo();
   } catch(e){ alvo.innerHTML = `<div class="aviso erro">Falha na ficha: ${e.message}</div>`; }
 }
 window.fichaJogo = fichaJogo;
@@ -2499,8 +2582,28 @@ function renderTelaJogo(){
     ${jogoUI.principal==='matchodds' ? `<div class="jg-subabas">
       ${btnS('ia','Análise I.A.')}${btnS('estat','Estatísticas')}${btnS('desempenho','Desempenho')}${btnS('gols','Gols')}${btnS('cartoes','Cartões')}${btnS('race','Race 10')}${btnS('h2h','Confronto Direto')}${btnS('jogadores','Jogadores')}${btnS('liga','Jogos da Liga')}${btnS('tabela','Tabela')}
     </div>` : ''}
+    <div id="jogo-pendencias">${d.pendentes?.length ? montarAvisoPendencias() : ''}</div>
     <div id="jogo-conteudo"></div>`;
   renderJogoConteudo();
+}
+function montarAvisoPendencias(){
+  const d = jogoDados; if (!d?.pendentes?.length) return '';
+  const n = Math.min(d.pendentes.length, 7);
+  return `<div class="aviso" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+    <span style="flex:1">⚠️ Estes times têm <b>${d.pendentes.length} dia(s)</b> com jogos já disputados mas sem placar colhido no banco — os "últimos jogos" podem estar desatualizados.</span>
+    <button class="mini" onclick="colherDatasPendentes(this)" style="border-color:var(--amber);color:var(--amber)">🔄 Colher resultados agora (${n} ${n>1?'requisições':'requisição'})</button>
+  </div>`;
+}
+async function checarPendenciasJogo(){
+  const d = jogoDados; if (!d) return;
+  const [pm2, pv2] = await Promise.all([
+    datasPendentesDoTime(d.j.mandante, d.j.mandante_id),
+    datasPendentesDoTime(d.j.visitante, d.j.visitante_id),
+  ]);
+  if (jogoDados !== d) return;
+  d.pendentes = [...new Set([...pm2, ...pv2])].sort().reverse();
+  const alvo = $('jogo-pendencias');
+  if (alvo) alvo.innerHTML = d.pendentes.length ? montarAvisoPendencias() : '';
 }
 function guardarBlocosDinamicos(){
   if (!jogoDados) return;
@@ -4041,9 +4144,10 @@ async function analisarRodada(idx){
   $('ro-analise').innerHTML = '<p class="msg-vazia">⏳ Cruzando históricos e rodando o modelo…</p>';
   $('ro-analise').scrollIntoView({behavior:'smooth', block:'start'});
   try{
-    const pm = { acao:'historico', time: j.mandante }; if (j.mandante_id) pm.id = j.mandante_id;
-    const pv = { acao:'historico', time: j.visitante }; if (j.visitante_id) pv.id = j.visitante_id;
-    const [rm, rv] = await Promise.all([chamarEdge(pm), chamarEdge(pv)]);
+    const [rm, rv] = await Promise.all([
+      historicoCompleto(j.mandante, j.mandante_id),
+      historicoCompleto(j.visitante, j.visitante_id),
+    ]);
     if (!rm.jogos?.length || !rv.jogos?.length){
       $('ro-analise').innerHTML = `<div class="aviso erro">Histórico insuficiente (${rm.jogos?.length||0} x ${rv.jogos?.length||0} jogos no banco). Rode o backfill de 90 dias na aba Histórico.</div>`;
       return;
@@ -4854,8 +4958,8 @@ async function toggleJogosAnteriores(boxId, mandante, mid, visitante, vid, merca
 
   try{
     const [rm, rv, rh2h] = await Promise.all([
-      chamarEdge(mid ? { acao:'historico', time: mandante, id: mid } : { acao:'historico', time: mandante }),
-      chamarEdge(vid ? { acao:'historico', time: visitante, id: vid } : { acao:'historico', time: visitante }),
+      historicoCompleto(mandante, mid),
+      historicoCompleto(visitante, vid),
       (mid && vid) ? chamarEdge({ acao:'confronto_direto', t1: mid, t2: vid, n: 5 }) : Promise.resolve({ jogos: [] }),
     ]);
     // guarda os dados para o filtro casa/fora re-renderizar
