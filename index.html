@@ -1080,6 +1080,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.75</b></td><td><b>Colheita sem depender de clique</b>: a varredura de dias faltantes roda em toda abertura do site enquanto houver buraco (não mais 1x por dia), o guard diário só é gravado quando a colheita completa de verdade, e a ficha do jogo colhe os dias pendentes sozinha ao detectar — o aviso vira indicador de progresso e a ficha recarrega ao terminar.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.74</b></td><td>Botão <b>🧩 Puxar jogos que faltam (30d)</b> direto na Grade do dia — mesmo recurso do Completar dias faltantes, agora à mão no grupo Cadastros, com progresso no próprio botão.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.73</b></td><td>Correções na atualização dos históricos: a aba <b>📊 Histórico 10 jogos</b> agora também junta banco + Edge; jogos de dias anteriores presos com status "ao vivo" no banco entram no histórico (com o placar gravado); a colheita automática e o botão da ficha completam <b>todos</b> os dias faltantes dos últimos 30 de uma vez (antes paravam em 12 e 7).</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.72</b></td><td><b>Dias faltantes preenchidos sozinhos</b>: o site verifica os últimos 30 dias, acha dias sem grade no banco ou com jogos sem placar final e baixa só o que falta — até 12 por dia na abertura (automático) e completo pelo novo botão <b>🧩 Completar dias faltantes (30d)</b> na aba Histórico. O aviso da ficha agora inclui esses dias.</td></tr>
@@ -1686,7 +1687,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.74";
+const APP_VERSAO = "v4.75";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2638,6 +2639,12 @@ async function checarPendenciasJogo(){
   d.pendentes = [...new Set([...pm2, ...pv2, ...gerais])].sort().reverse();
   const alvo = $('jogo-pendencias');
   if (alvo) alvo.innerHTML = d.pendentes.length ? montarAvisoPendencias() : '';
+  // colhe sozinho na primeira detecção da sessão — sem esperar clique
+  if (d.pendentes.length && !window.__autoColheuFicha){
+    window.__autoColheuFicha = true;
+    const botao = alvo?.querySelector('button');
+    if (botao) colherDatasPendentes(botao);
+  }
 }
 function guardarBlocosDinamicos(){
   if (!jogoDados) return;
@@ -7294,23 +7301,33 @@ window.completarDiasFaltantes = completarDiasFaltantes;
 
 async function autoColheitaDiaria(){
   const hoje = new Date().toISOString().slice(0,10);
+  const medidor = $('cota-medidor');
+  // 1) ontem/anteontem com forcar — 1x por dia (guard só é gravado se completar)
   let ultima = '';
   try{ ultima = localStorage.getItem('auto_colheita') || ''; }catch(_){ }
-  if (ultima === hoje) return; // já rodou hoje
-  try{ localStorage.setItem('auto_colheita', hoje); }catch(_){ }
-  const medidor = $('cota-medidor');
-  for (let i = 1; i <= 2; i++){
-    const dia = new Date(Date.now() - i*86400000).toISOString().slice(0,10);
-    try{
-      if (medidor) medidor.title = `Colheita automática: atualizando ${dia}…`;
-      const r = await chamarEdge({ acao:'grade', data: dia, forcar: 1 });
-      if (r.aviso && String(r.aviso).includes('indisponível')) break; // cota esgotada — tenta de novo amanhã
-    } catch(_){ break; }
+  if (ultima !== hoje){
+    let ok = true;
+    for (let i = 1; i <= 2; i++){
+      const dia = new Date(Date.now() - i*86400000).toISOString().slice(0,10);
+      try{
+        if (medidor) medidor.title = `Colheita automática: atualizando ${dia}…`;
+        const r = await chamarEdge({ acao:'grade', data: dia, forcar: 1 });
+        if (r.aviso && String(r.aviso).includes('indisponível')){ ok = false; break; }
+      } catch(_){ ok = false; break; }
+    }
+    if (ok){ try{ localStorage.setItem('auto_colheita', hoje); }catch(_){ } }
   }
-  // além de ontem/anteontem, completa até 12 dias faltantes ou incompletos dos últimos 30
+  // 2) dias faltantes dos últimos 30 — roda em TODA abertura enquanto houver buraco (cooldown 20min)
   try{
-    const r = await completarDiasFaltantes(30, (dia, i, tot) => { if (medidor) medidor.title = `Colheita automática: completando ${dia} (${i}/${tot})…`; });
-    if (r.feitos && medidor) medidor.title = `Colheita automática: ${r.feitos} dia(s) completados. Clique para atualizar a cota.`;
+    let cool = 0;
+    try{ cool = parseInt(localStorage.getItem('auto_colheita_gap')||'0'); }catch(_){ }
+    if (Date.now() - cool > 20*60000){
+      const r = await completarDiasFaltantes(30, (dia, i, tot) => { if (medidor) medidor.title = `Colheita automática: completando ${dia} (${i}/${tot})…`; });
+      try{ localStorage.setItem('auto_colheita_gap', String(Date.now())); }catch(_){ }
+      if (r.feitos && medidor) medidor.title = `Colheita automática: ${r.feitos} dia(s) completados.`;
+      // se uma ficha estiver aberta, atualiza os dados dela
+      if (r.feitos && jogoDados && document.querySelector('nav button.on')?.dataset.aba === 'jogo') fichaJogo(jogoDados.idx);
+    }
   } catch(_){ }
   if (medidor) medidor.title = 'Clique para atualizar';
 }
