@@ -918,6 +918,7 @@
         <button class="mini" id="btn-backfill" title="Baixa as grades dos últimos 90 dias para o banco, em lotes (fazer 1x)">⏬ Baixar últimos 90 dias</button>
         <button class="mini" id="btn-colher" title="Recarrega as grades dos últimos 5 dias e completa os placares finais (rode diariamente; gasta ~5 requisições)">🔄 Colher resultados recentes</button>
         <button class="mini" id="btn-completar" title="Verifica os últimos 30 dias, encontra dias sem grade no banco ou com jogos sem placar final e baixa só o que falta (1 requisição por dia faltante)">🧩 Completar dias faltantes (30d)</button>
+        <button class="mini" id="btn-af-key" title="Cola sua chave da API-Football para o site buscar os últimos jogos de cada time DIRETO na API, sem depender da Edge/banco. Fica salva só neste navegador.">🔑 Chave da API (busca direta)</button>
         <button class="mini" id="btn-fdorg" title="Mapeia os times das ligas principais na football-data.org (fazer 1x; requer o secret FOOTBALLDATA_KEY)">🔗 Ativar últimos-10 (ligas principais)</button>
       </div>
     </div>
@@ -1080,6 +1081,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.76</b></td><td><b>Busca direta na API-Football</b> (solução definitiva para históricos desatualizados): salvando sua chave da API no botão 🔑 (aba Histórico ou no aviso da ficha), o site busca os últimos 15 jogos de cada time direto na API — sem depender da Edge nem de grades carregadas. Cache de 30 min por time, e o resultado ainda é gravado no banco para as outras telas. Se a ficha detectar histórico parado há 4+ dias, ela completa sozinha pela API.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.75</b></td><td><b>Colheita sem depender de clique</b>: a varredura de dias faltantes roda em toda abertura do site enquanto houver buraco (não mais 1x por dia), o guard diário só é gravado quando a colheita completa de verdade, e a ficha do jogo colhe os dias pendentes sozinha ao detectar — o aviso vira indicador de progresso e a ficha recarrega ao terminar.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.74</b></td><td>Botão <b>🧩 Puxar jogos que faltam (30d)</b> direto na Grade do dia — mesmo recurso do Completar dias faltantes, agora à mão no grupo Cadastros, com progresso no próprio botão.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.73</b></td><td>Correções na atualização dos históricos: a aba <b>📊 Histórico 10 jogos</b> agora também junta banco + Edge; jogos de dias anteriores presos com status "ao vivo" no banco entram no histórico (com o placar gravado); a colheita automática e o botão da ficha completam <b>todos</b> os dias faltantes dos últimos 30 de uma vez (antes paravam em 12 e 7).</td></tr>
@@ -1687,7 +1689,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.75";
+const APP_VERSAO = "v4.76";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2210,9 +2212,71 @@ async function historicoCompleto(nome, id){
     const at = mapa.get(k);
     if (at.ht_mandante==null && g.ht_mandante!=null){ at.ht_mandante = g.ht_mandante; at.ht_visitante = g.ht_visitante; }
   }});
-  const jogos = [...mapa.values()].sort((a,b)=> String(b.data||'').localeCompare(String(a.data||'')));
+  let jogos = [...mapa.values()].sort((a,b)=> String(b.data||'').localeCompare(String(a.data||'')));
+  // 4) plano B definitivo: se o mais recente está velho (4+ dias) ou a lista é curta, busca direto na API
+  const limiar = new Date(Date.now() - 4*86400000).toISOString().slice(0,10);
+  if (id && getAfKey() && (!jogos.length || jogos.length < 5 || String(jogos[0].data||'').slice(0,10) < limiar)){
+    const diretos = await ultimosDoTimeDireto(id, 15);
+    if (diretos && diretos.length){
+      diretos.forEach(g => { const k = chave(g); if (!mapa.has(k)) mapa.set(k, g); });
+      jogos = [...mapa.values()].sort((a,b)=> String(b.data||'').localeCompare(String(a.data||'')));
+    }
+  }
   return { time: base.time || nome, jogos };
 }
+// ==========================================================
+// BUSCA DIRETA NA API-FOOTBALL (v4.76) — plano B definitivo.
+// Se a chave estiver salva, busca os últimos 15 jogos do time
+// DIRETO na API (1 requisição por time, cache de 30 min),
+// sem depender da Edge nem de grade carregada. Ainda tenta
+// gravar no banco para as outras telas aproveitarem.
+// ==========================================================
+function getAfKey(){ try{ return (localStorage.getItem('af_key')||'').trim(); }catch(_){ return ''; } }
+function setAfKey(k){ try{ localStorage.setItem('af_key', (k||'').trim()); }catch(_){ } }
+window.__afCache = window.__afCache || {};
+async function ultimosDoTimeDireto(id, n){
+  const key = getAfKey();
+  if (!key || !id) return null;
+  const cache = window.__afCache[id];
+  if (cache && Date.now() - cache.t < 30*60000) return cache.jogos;
+  try{
+    const res = await fetch(`https://v3.football.api-sports.io/fixtures?team=${id}&last=${n||15}&timezone=America/Bahia`, {
+      headers: { 'x-apisports-key': key }
+    });
+    if (!res.ok) return null;
+    const dados = await res.json();
+    if (dados.errors && Object.keys(dados.errors).length){ console.warn('API direta:', dados.errors); return null; }
+    const jogos = (dados.response||[]).filter(f => ['FT','AET','PEN'].includes(f.fixture?.status?.short)).map(f => ({
+      data: (f.fixture.date||'').slice(0,10),
+      mandante: f.teams.home.name, visitante: f.teams.away.name,
+      mandante_id: f.teams.home.id, visitante_id: f.teams.away.id,
+      gols_mandante: f.goals.home, gols_visitante: f.goals.away,
+      ht_mandante: f.score?.halftime?.home ?? null, ht_visitante: f.score?.halftime?.away ?? null,
+      time_era_mandante: String(f.teams.home.id) === String(id),
+      liga: f.league?.name || '', fixture_id: f.fixture.id, status: f.fixture.status.short,
+    }));
+    window.__afCache[id] = { t: Date.now(), jogos };
+    // tenta gravar no banco em segundo plano (se as regras permitirem; falha silenciosa)
+    try{
+      const linhas = jogos.map(g => ({ fixture_id: g.fixture_id, data_jogo: g.data, mandante: g.mandante, visitante: g.visitante,
+        mandante_id: g.mandante_id, visitante_id: g.visitante_id, placar: `${g.gols_mandante}x${g.gols_visitante}`,
+        gols_mandante: g.gols_mandante, gols_visitante: g.gols_visitante,
+        ht_mandante: g.ht_mandante, ht_visitante: g.ht_visitante, status: g.status, liga: g.liga }));
+      db.from('jogos_dia').upsert(linhas, { onConflict: 'fixture_id' }).then(()=>{}, ()=>{});
+    } catch(_){ }
+    return jogos;
+  } catch(e){ console.warn('API direta falhou:', e.message); return null; }
+}
+function pedirChaveAf(){
+  const atual = getAfKey();
+  const k = prompt('Cola aqui a sua chave da API-Football (dashboard.api-football.com → API Key).\nEla fica salva só neste navegador e permite buscar os últimos jogos de cada time direto na API, sem depender da Edge.', atual);
+  if (k === null) return;
+  setAfKey(k);
+  window.__afCache = {};
+  alert(k.trim() ? '✅ Chave salva. A partir de agora as fichas buscam os últimos jogos direto na API.' : 'Chave removida.');
+}
+window.pedirChaveAf = pedirChaveAf;
+
 // jogos passados que ficaram sem placar colhido no banco (grade carregada antes da bola rolar)
 async function datasPendentesDoTime(nome, id){
   try{
@@ -2623,8 +2687,10 @@ function renderTelaJogo(){
 function montarAvisoPendencias(){
   const d = jogoDados; if (!d?.pendentes?.length) return '';
   const n = Math.min(d.pendentes.length, 30);
+  const dicaChave = getAfKey() ? '' : `<button class="mini" onclick="pedirChaveAf()" style="border-color:var(--green);color:var(--green)" title="Com a chave, a ficha busca os últimos jogos direto na API e nunca fica desatualizada">🔑 Ativar busca direta na API</button>`;
   return `<div class="aviso" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
     <span style="flex:1">⚠️ Há <b>${d.pendentes.length} dia(s)</b> dos últimos 30 sem grade no banco ou com jogos sem placar colhido — os "últimos jogos" podem estar desatualizados.</span>
+    ${dicaChave}
     <button class="mini" onclick="colherDatasPendentes(this)" style="border-color:var(--amber);color:var(--amber)">🔄 Colher resultados agora (${n} ${n>1?'requisições':'requisição'})</button>
   </div>`;
 }
@@ -3683,6 +3749,7 @@ async function completarFaltantesUI(botao, alvoAviso){
   finally{ botao.disabled = false; botao.textContent = textoOriginal; }
 }
 $('btn-completar').addEventListener('click', () => completarFaltantesUI($('btn-completar'), $('h-aviso')));
+$('btn-af-key').addEventListener('click', pedirChaveAf);
 $('btn-puxar-jogos').addEventListener('click', () => completarFaltantesUI($('btn-puxar-jogos'), $('grade-aviso')));
 
 $('btn-fdorg').addEventListener('click', async () => {
