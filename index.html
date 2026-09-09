@@ -366,6 +366,7 @@
       <div class="menu-grupo-itens">
         <button data-aba="banca" title="Controle suas apostas reais com valor, odd, green/red e acompanhe o lucro.">💰 Gestão de banca</button>
         <button data-aba="relatorios" title="Relatórios de desempenho: green/red, taxa por mercado, evolução.">📈 Relatórios</button>
+        <button data-aba="lembretes" title="Vencimentos das assinaturas (API, CS Score, Radar Oráculo…) com aviso de proximidade.">🔔 Lembretes de pagamento</button>
       </div>
     </div>
 
@@ -998,6 +999,22 @@
     <div id="ac-conteudo"></div>
   </section>
 
+  <!-- ================= LEMBRETES DE PAGAMENTO ================= -->
+  <section id="aba-lembretes">
+    <h2>🔔 Lembretes de pagamento</h2>
+    <p style="font-size:13.5px;color:var(--chalk-dim);margin-bottom:14px">Assinaturas e contas do projeto, com o próximo vencimento calculado pelo dia do mês. Aviso automático quando faltar 3 dias ou menos. Os lembretes ficam salvos neste navegador.</p>
+    <div id="lem-lista"></div>
+    <h3 style="margin-top:20px">Adicionar lembrete</h3>
+    <div class="linha c4" style="align-items:end">
+      <div><label for="lem-nome">Nome</label><input id="lem-nome" placeholder="Ex: Nome do serviço"></div>
+      <div><label for="lem-valor">Valor (texto livre)</label><input id="lem-valor" placeholder="Ex: R$ 49,90"></div>
+      <div><label for="lem-dia">Dia do vencimento (1–31)</label><input id="lem-dia" type="number" min="1" max="31" placeholder="Ex: 10"></div>
+      <div><button class="acao" onclick="adicionarLembrete()">➕ Adicionar</button></div>
+    </div>
+    <div class="linha"><div><label for="lem-obs">Observação (opcional)</label><input id="lem-obs" placeholder="Ex: cartão final 1234, link de pagamento…"></div></div>
+    <div id="lem-aviso"></div>
+  </section>
+
   <!-- ================= RELATÓRIOS ================= -->
   <section id="aba-relatorios">
     <h2>📈 Relatórios de desempenho</h2>
@@ -1061,6 +1078,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.71</b></td><td>Nova aba <b>🔔 Lembretes de pagamento</b>: assinaturas do projeto (API-Football, CS Score, Radar Oráculo e o que mais você cadastrar) com próximo vencimento calculado pelo dia do mês, cores por proximidade e bolinha vermelha no menu quando algo vence em até 3 dias. Editável e salvo no navegador.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.70</b></td><td><b>Colheita automática de resultados</b>: uma vez por dia, ao abrir o site, os últimos 2 dias são recarregados em segundo plano (2 requisições) e os placares finais gravados no banco. Os "últimos jogos" ficam em dia sem precisar colher na mão; o botão da ficha segue disponível para dias mais antigos.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.69</b></td><td><b>Últimos jogos sempre atualizados</b>: o histórico agora junta a função Edge com a tabela jogos_dia (atualizada a cada grade carregada), remove duplicados e ordena por data — vale para a tela do jogo, o modal de jogos anteriores das Sugestões e a Análise da rodada. A ficha ainda detecta dias com jogos disputados sem placar colhido e oferece o botão "Colher resultados agora".</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.68</b></td><td>Tela do jogo turbinada: <b>escudos dos clubes</b> (API-Football), novas abas <b>Desempenho</b> (por tempo + HT→FT), <b>Gols</b> (momentos dos gols, over/under), <b>Cartões</b> (linhas 0.5–8.5 e médias), <b>Jogadores</b> (rankings dos dois elencos), <b>Jogos da Liga</b> (rodada clicável) e <b>Tabela</b> (classificação calculada do banco). Botão para buscar até 20 confrontos diretos na API e mensagens claras quando um time está sem histórico.</td></tr>
@@ -1663,7 +1681,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.70";
+const APP_VERSAO = "v4.71";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -1891,6 +1909,8 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   if (b.dataset.aba === 'apostaspeguei' && typeof listarApostasPeguei === 'function'){ listarApostasPeguei(); }
   // renderiza Histórico 0x0 ao abrir
   if (b.dataset.aba === 'hist0x0' && typeof listarHist0x0 === 'function'){ listarHist0x0(); }
+  // renderiza os Lembretes de pagamento ao abrir
+  if (b.dataset.aba === 'lembretes' && typeof renderLembretes === 'function'){ renderLembretes(); }
   atualizarBtnVoltar();
 }));
 function irParaAba(nome){ document.querySelector(`nav button[data-aba="${nome}"]`).click(); }
@@ -7090,6 +7110,111 @@ function trocaAjuda(id){
 window.trocaAjuda = trocaAjuda;
 // mostra o primeiro conteúdo quando a aba abre
 document.addEventListener('DOMContentLoaded', () => { if ($('ajuda-conteudo')) trocaAjuda('fluxos'); if (typeof restaurarGruposMenu === 'function') restaurarGruposMenu(); });
+
+// ==========================================================
+// LEMBRETES DE PAGAMENTO (v4.71)
+// ==========================================================
+const LEM_SEED = [
+  { nome:'API-Football (plano Pro)', valor:'US$ 19,00', dia:14, obs:'assinatura mensal da API de dados' },
+  { nome:'CS Score (Plano Completo)', valor:'R$ 87,90', dia:16, obs:'renova dia 16' },
+  { nome:'Radar Oráculo', valor:'R$ 59,90', dia:12, obs:'pago via Stripe' },
+];
+function getLembretes(){
+  try{
+    const raw = localStorage.getItem('lembretes_pag');
+    if (raw) return JSON.parse(raw);
+  }catch(_){ }
+  setLembretes(LEM_SEED);
+  return LEM_SEED.slice();
+}
+function setLembretes(l){ try{ localStorage.setItem('lembretes_pag', JSON.stringify(l)); }catch(_){ } }
+// próximo vencimento a partir do dia do mês (ajusta meses curtos: 31 vira 30/28)
+function proximoVencimento(dia){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const tenta = (ano, mes) => {
+    const ultimoDia = new Date(ano, mes+1, 0).getDate();
+    return new Date(ano, mes, Math.min(dia, ultimoDia));
+  };
+  let v = tenta(hoje.getFullYear(), hoje.getMonth());
+  if (v < hoje) v = tenta(hoje.getFullYear(), hoje.getMonth()+1);
+  return v;
+}
+function diasAte(data){
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  return Math.round((data - hoje) / 86400000);
+}
+function renderLembretes(){
+  const alvo = $('lem-lista'); if (!alvo) return;
+  const lista = getLembretes();
+  if (!lista.length){ alvo.innerHTML = '<p class="msg-vazia">Nenhum lembrete cadastrado.</p>'; return; }
+  const linhas = lista
+    .map((l,i) => ({...l, i, venc: proximoVencimento(l.dia)}))
+    .sort((a,b) => a.venc - b.venc)
+    .map(l => {
+      const dias = diasAte(l.venc);
+      const dataFmt = `${String(l.venc.getDate()).padStart(2,'0')}/${String(l.venc.getMonth()+1).padStart(2,'0')}/${l.venc.getFullYear()}`;
+      const chip = dias === 0 ? '<span class="jg-sinal vermelho">💸 VENCE HOJE</span>'
+        : dias === 1 ? '<span class="jg-sinal vermelho">vence amanhã</span>'
+        : dias <= 3 ? `<span class="jg-sinal amarelo">em ${dias} dias</span>`
+        : dias <= 7 ? `<span class="jg-sinal amarelo" style="opacity:.8">em ${dias} dias</span>`
+        : `<span class="jg-sinal verde">em ${dias} dias</span>`;
+      return `<div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;background:var(--pitch);border:1px solid ${dias<=1?'var(--red)':dias<=3?'var(--amber)':'rgba(237,234,224,.1)'};border-radius:10px;padding:12px 16px;margin-bottom:8px">
+        <div style="flex:1;min-width:180px">
+          <b style="font-size:15px">${l.nome}</b>
+          ${l.obs?`<div style="font-size:12px;color:var(--chalk-dim)">${l.obs}</div>`:''}
+        </div>
+        <div style="font-family:'Saira Condensed',sans-serif;font-size:20px;font-weight:800;color:var(--amber);min-width:100px">${l.valor||''}</div>
+        <div style="text-align:center;min-width:110px">
+          <div style="font-family:'IBM Plex Mono',monospace;font-size:13px">${dataFmt}</div>
+          <div style="font-size:11px;color:var(--chalk-dim)">todo dia ${l.dia}</div>
+        </div>
+        ${chip}
+        <button class="mini" onclick="editarLembrete(${l.i})" title="Editar">✏️</button>
+        <button class="mini" onclick="excluirLembrete(${l.i})" title="Excluir" style="border-color:var(--red);color:var(--red)">🗑️</button>
+      </div>`;
+    }).join('');
+  const total = lista.length;
+  alvo.innerHTML = linhas + `<p style="font-size:12px;color:var(--chalk-dim);margin-top:6px">${total} lembrete(s), ordenados pelo vencimento mais próximo.</p>`;
+}
+function adicionarLembrete(){
+  const nome = $('lem-nome').value.trim();
+  const valor = $('lem-valor').value.trim();
+  const dia = parseInt($('lem-dia').value);
+  const obs = $('lem-obs').value.trim();
+  if (!nome || !dia || dia < 1 || dia > 31){ aviso($('lem-aviso'), 'Preencha pelo menos o nome e um dia entre 1 e 31.', 'erro'); return; }
+  const lista = getLembretes();
+  lista.push({ nome, valor, dia, obs });
+  setLembretes(lista);
+  $('lem-nome').value = ''; $('lem-valor').value = ''; $('lem-dia').value = ''; $('lem-obs').value = '';
+  aviso($('lem-aviso'), '');
+  renderLembretes(); atualizarBannerLembretes();
+}
+function editarLembrete(i){
+  const lista = getLembretes(); const l = lista[i]; if (!l) return;
+  const nome = prompt('Nome:', l.nome); if (nome===null) return;
+  const valor = prompt('Valor (texto livre):', l.valor||''); if (valor===null) return;
+  const dia = parseInt(prompt('Dia do vencimento (1–31):', l.dia)); if (!dia || dia<1 || dia>31) return;
+  const obs = prompt('Observação:', l.obs||''); if (obs===null) return;
+  lista[i] = { nome: nome.trim()||l.nome, valor: valor.trim(), dia, obs: obs.trim() };
+  setLembretes(lista); renderLembretes(); atualizarBannerLembretes();
+}
+function excluirLembrete(i){
+  const lista = getLembretes(); const l = lista[i]; if (!l) return;
+  if (!confirm(`Excluir o lembrete "${l.nome}"?`)) return;
+  lista.splice(i,1); setLembretes(lista); renderLembretes(); atualizarBannerLembretes();
+}
+// aviso no menu quando algo vence em até 3 dias
+function atualizarBannerLembretes(){
+  const btn = document.querySelector('nav button[data-aba="lembretes"]'); if (!btn) return;
+  const urgentes = getLembretes().filter(l => diasAte(proximoVencimento(l.dia)) <= 3);
+  btn.innerHTML = urgentes.length
+    ? `🔔 Lembretes de pagamento <span style="background:var(--red);color:#fff;border-radius:999px;font-size:10.5px;font-weight:800;padding:1px 7px;margin-left:4px">${urgentes.length}</span>`
+    : '🔔 Lembretes de pagamento';
+}
+window.adicionarLembrete = adicionarLembrete;
+window.editarLembrete = editarLembrete;
+window.excluirLembrete = excluirLembrete;
+setTimeout(atualizarBannerLembretes, 1000);
 
 // ==========================================================
 // COLHEITA AUTOMÁTICA (v4.70) — 1x por dia, ao abrir o site,
