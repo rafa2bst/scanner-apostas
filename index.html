@@ -265,6 +265,7 @@
       <button class="hamburguer" id="btn-menu" onclick="toggleMenu()" title="Menu" aria-label="Abrir menu">
         <span></span><span></span><span></span>
       </button>
+      <button class="mini" id="btn-voltar" onclick="voltarAba()" style="display:none;white-space:nowrap;border-color:var(--amber);color:var(--amber);font-weight:700" title="Volta para a tela anterior">← Voltar</button>
       <div style="display:flex;align-items:center;gap:12px">
         <svg width="46" height="46" viewBox="0 0 46 46" fill="none" style="flex-shrink:0" aria-hidden="true">
           <circle cx="23" cy="23" r="20" stroke="var(--amber)" stroke-width="2.5"/>
@@ -989,7 +990,10 @@
       Clique em qualquer jogo (na Grade, Sugestões, TOP do dia ou Ao vivo) e depois volte aqui — ou abra a ficha e use o botão "🔬 Análise completa". Mostra desempenho por tempo, gols, cartões e escanteios das duas equipes, com dados da temporada e do recorte recente.
     </p>
     <div id="ac-aviso"></div>
-    <div id="ac-status" style="font-size:13px;color:var(--chalk-dim);margin-bottom:8px"></div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <button class="mini" onclick="voltarAba()" style="border-color:var(--amber);color:var(--amber)">← Voltar</button>
+      <div id="ac-status" style="font-size:13px;color:var(--chalk-dim)"></div>
+    </div>
     <div id="ac-subabas" style="display:none;gap:8px;flex-wrap:wrap;margin-bottom:14px"></div>
     <div id="ac-conteudo"></div>
   </section>
@@ -1838,7 +1842,27 @@ window.toggleMenu = toggleMenu;
 window.fecharMenu = fecharMenu;
 document.addEventListener('keydown', e => { if (e.key === 'Escape') fecharMenu(); });
 
+// ---- histórico de navegação (botão ← Voltar do cabeçalho) ----
+const _abaHistorico = [];
+let _voltando = false;
+function voltarAba(){
+  const atual = document.querySelector('nav button.on')?.dataset.aba;
+  let ant = _abaHistorico.pop();
+  while (ant && ant === atual) ant = _abaHistorico.pop();
+  if (!ant) ant = 'grade';
+  _voltando = true;
+  try{ irParaAba(ant); } finally { _voltando = false; }
+  atualizarBtnVoltar();
+}
+function atualizarBtnVoltar(){ const b = $('btn-voltar'); if (b) b.style.display = _abaHistorico.length ? 'inline-block' : 'none'; }
+window.voltarAba = voltarAba;
+
 document.querySelectorAll('nav button').forEach(b => b.addEventListener('click', () => {
+  const atual = document.querySelector('nav button.on');
+  if (!_voltando && atual && atual.dataset.aba !== b.dataset.aba){
+    _abaHistorico.push(atual.dataset.aba);
+    if (_abaHistorico.length > 20) _abaHistorico.shift();
+  }
   document.querySelectorAll('nav button').forEach(x => x.classList.remove('on'));
   fecharMenu(); // fecha o menu lateral ao escolher uma aba
   document.querySelectorAll('section').forEach(x => x.classList.remove('on'));
@@ -1864,6 +1888,7 @@ document.querySelectorAll('nav button').forEach(b => b.addEventListener('click',
   if (b.dataset.aba === 'apostaspeguei' && typeof listarApostasPeguei === 'function'){ listarApostasPeguei(); }
   // renderiza Histórico 0x0 ao abrir
   if (b.dataset.aba === 'hist0x0' && typeof listarHist0x0 === 'function'){ listarHist0x0(); }
+  atualizarBtnVoltar();
 }));
 function irParaAba(nome){ document.querySelector(`nav button[data-aba="${nome}"]`).click(); }
 
@@ -2446,7 +2471,7 @@ function renderTelaJogo(){
   $('jogo-tela').innerHTML = `
     <div class="jg-topo">
       <div class="jg-topo-linha">
-        <button class="mini" onclick="irParaAba('grade')">← Voltar</button>
+        <button class="mini" onclick="voltarAba()">← Voltar</button>
         <span class="jg-liga">🏆 ${j.pais||''}${j.pais&&j.liga?' — ':''}${j.liga||''}</span>
         ${selo}
       </div>
