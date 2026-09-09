@@ -916,6 +916,7 @@
         <button class="acao" id="btn-historico">Buscar histórico</button>
         <button class="mini" id="btn-backfill" title="Baixa as grades dos últimos 90 dias para o banco, em lotes (fazer 1x)">⏬ Baixar últimos 90 dias</button>
         <button class="mini" id="btn-colher" title="Recarrega as grades dos últimos 5 dias e completa os placares finais (rode diariamente; gasta ~5 requisições)">🔄 Colher resultados recentes</button>
+        <button class="mini" id="btn-completar" title="Verifica os últimos 30 dias, encontra dias sem grade no banco ou com jogos sem placar final e baixa só o que falta (1 requisição por dia faltante)">🧩 Completar dias faltantes (30d)</button>
         <button class="mini" id="btn-fdorg" title="Mapeia os times das ligas principais na football-data.org (fazer 1x; requer o secret FOOTBALLDATA_KEY)">🔗 Ativar últimos-10 (ligas principais)</button>
       </div>
     </div>
@@ -1078,6 +1079,7 @@
 
     <div class="tabela-scroll"><table class="comp" style="font-size:13px">
       <tr><th style="text-align:center;white-space:nowrap">Versão</th><th style="text-align:left">O que mudou</th></tr>
+      <tr><td class="valor" style="text-align:center"><b>v4.72</b></td><td><b>Dias faltantes preenchidos sozinhos</b>: o site verifica os últimos 30 dias, acha dias sem grade no banco ou com jogos sem placar final e baixa só o que falta — até 12 por dia na abertura (automático) e completo pelo novo botão <b>🧩 Completar dias faltantes (30d)</b> na aba Histórico. O aviso da ficha agora inclui esses dias.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.71</b></td><td>Nova aba <b>🔔 Lembretes de pagamento</b>: assinaturas do projeto (API-Football, CS Score, Radar Oráculo e o que mais você cadastrar) com próximo vencimento calculado pelo dia do mês, cores por proximidade e bolinha vermelha no menu quando algo vence em até 3 dias. Editável e salvo no navegador.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.70</b></td><td><b>Colheita automática de resultados</b>: uma vez por dia, ao abrir o site, os últimos 2 dias são recarregados em segundo plano (2 requisições) e os placares finais gravados no banco. Os "últimos jogos" ficam em dia sem precisar colher na mão; o botão da ficha segue disponível para dias mais antigos.</td></tr>
       <tr><td class="valor" style="text-align:center"><b>v4.69</b></td><td><b>Últimos jogos sempre atualizados</b>: o histórico agora junta a função Edge com a tabela jogos_dia (atualizada a cada grade carregada), remove duplicados e ordena por data — vale para a tela do jogo, o modal de jogos anteriores das Sugestões e a Análise da rodada. A ficha ainda detecta dias com jogos disputados sem placar colhido e oferece o botão "Colher resultados agora".</td></tr>
@@ -1681,7 +1683,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.71";
+const APP_VERSAO = "v4.72";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -2611,18 +2613,19 @@ function montarAvisoPendencias(){
   const d = jogoDados; if (!d?.pendentes?.length) return '';
   const n = Math.min(d.pendentes.length, 7);
   return `<div class="aviso" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-    <span style="flex:1">⚠️ Estes times têm <b>${d.pendentes.length} dia(s)</b> com jogos já disputados mas sem placar colhido no banco — os "últimos jogos" podem estar desatualizados.</span>
+    <span style="flex:1">⚠️ Há <b>${d.pendentes.length} dia(s)</b> dos últimos 30 sem grade no banco ou com jogos sem placar colhido — os "últimos jogos" podem estar desatualizados.</span>
     <button class="mini" onclick="colherDatasPendentes(this)" style="border-color:var(--amber);color:var(--amber)">🔄 Colher resultados agora (${n} ${n>1?'requisições':'requisição'})</button>
   </div>`;
 }
 async function checarPendenciasJogo(){
   const d = jogoDados; if (!d) return;
-  const [pm2, pv2] = await Promise.all([
+  const [pm2, pv2, gerais] = await Promise.all([
     datasPendentesDoTime(d.j.mandante, d.j.mandante_id),
     datasPendentesDoTime(d.j.visitante, d.j.visitante_id),
+    diasFaltantesGerais(30),
   ]);
   if (jogoDados !== d) return;
-  d.pendentes = [...new Set([...pm2, ...pv2])].sort().reverse();
+  d.pendentes = [...new Set([...pm2, ...pv2, ...gerais])].sort().reverse();
   const alvo = $('jogo-pendencias');
   if (alvo) alvo.innerHTML = d.pendentes.length ? montarAvisoPendencias() : '';
 }
@@ -3642,6 +3645,20 @@ $('btn-colher').addEventListener('click', async () => {
     }
     if (dias) aviso($('h-aviso'), `✅ ${dias} dia(s) recarregados, ${atualizados} jogos com placar final no banco. Rode "Atualizar resultados" na aba Histórico de sugestões para apurar green/red.`);
   } catch(e){ aviso($('h-aviso'), 'Falha ao colher: ' + e.message, 'erro'); }
+  finally{ b.disabled = false; }
+});
+
+$('btn-completar').addEventListener('click', async () => {
+  const b = $('btn-completar'); b.disabled = true;
+  try{
+    aviso($('h-aviso'), '⏳ Verificando os últimos 30 dias no banco…');
+    const dias = await diasFaltantesGerais(30);
+    if (!dias.length){ aviso($('h-aviso'), '✅ Nenhum dia faltante — os últimos 30 dias estão completos no banco.'); b.disabled = false; return; }
+    const r = await completarDiasFaltantes(30, (dia, i, tot) => aviso($('h-aviso'), `⏳ Baixando ${dia} (${i}/${tot})…`));
+    if (r.cota) aviso($('h-aviso'), `⚠️ Cota da API esgotada. Completei ${r.feitos} dia(s); rode de novo amanhã para o resto.`, 'erro');
+    else if (r.erro) aviso($('h-aviso'), `⚠️ Erro no meio do caminho. Completei ${r.feitos} dia(s) — rode de novo para continuar.`, 'erro');
+    else aviso($('h-aviso'), `✅ ${r.feitos} dia(s) baixados. Os últimos 30 dias estão completos — históricos e últimos jogos atualizados.`);
+  } catch(e){ aviso($('h-aviso'), 'Falha: '+e.message, 'erro'); }
   finally{ b.disabled = false; }
 });
 
@@ -7222,6 +7239,44 @@ setTimeout(atualizarBannerLembretes, 1000);
 // placares finais no banco (2 requisições). Mantém os
 // "últimos jogos" atualizados sem ação manual.
 // ==========================================================
+// dias dos últimos N que estão faltando no banco (sem nenhuma linha) ou com jogos passados sem placar final
+async function diasFaltantesGerais(nDias){
+  nDias = nDias || 30;
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
+  const iniStr = new Date(hoje - nDias*86400000).toISOString().slice(0,10);
+  const hojeStr = hoje.toISOString().slice(0,10);
+  const presentes = new Set(); const pendentes = new Set();
+  try{
+    const { data } = await db.from('jogos_dia').select('data_jogo,status')
+      .gte('data_jogo', iniStr).lt('data_jogo', hojeStr).limit(20000);
+    (data||[]).forEach(g => {
+      presentes.add(g.data_jogo);
+      if (['NS','TBD','1H','2H','HT','ET','P','BT','LIVE','INT'].includes(g.status)) pendentes.add(g.data_jogo);
+    });
+  } catch(_){ return []; }
+  const faltantes = [];
+  for (let i = 1; i <= nDias; i++){
+    const dStr = new Date(hoje - i*86400000).toISOString().slice(0,10);
+    if (!presentes.has(dStr) || pendentes.has(dStr)) faltantes.push(dStr);
+  }
+  return faltantes; // do mais recente para o mais antigo
+}
+async function completarDiasFaltantes(limite, onProgresso){
+  const dias = await diasFaltantesGerais(30);
+  const alvo = dias.slice(0, limite || 30);
+  let feitos = 0;
+  for (const dia of alvo){
+    if (onProgresso) onProgresso(dia, feitos+1, alvo.length);
+    try{
+      const r = await chamarEdge({ acao:'grade', data: dia, forcar: 1 });
+      if (r.aviso && String(r.aviso).includes('indisponível')) return { feitos, restantes: alvo.length - feitos, cota: true };
+      feitos++;
+    } catch(_){ return { feitos, restantes: alvo.length - feitos, erro: true }; }
+  }
+  return { feitos, restantes: dias.length - feitos };
+}
+window.completarDiasFaltantes = completarDiasFaltantes;
+
 async function autoColheitaDiaria(){
   const hoje = new Date().toISOString().slice(0,10);
   let ultima = '';
@@ -7237,6 +7292,11 @@ async function autoColheitaDiaria(){
       if (r.aviso && String(r.aviso).includes('indisponível')) break; // cota esgotada — tenta de novo amanhã
     } catch(_){ break; }
   }
+  // além de ontem/anteontem, completa até 12 dias faltantes ou incompletos dos últimos 30
+  try{
+    const r = await completarDiasFaltantes(12, (dia, i, tot) => { if (medidor) medidor.title = `Colheita automática: completando ${dia} (${i}/${tot})…`; });
+    if (r.feitos && medidor) medidor.title = `Colheita automática: ${r.feitos} dia(s) completados. Clique para atualizar a cota.`;
+  } catch(_){ }
   if (medidor) medidor.title = 'Clique para atualizar';
 }
 setTimeout(autoColheitaDiaria, 4000); // espera o site abrir antes de rodar
