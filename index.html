@@ -1690,7 +1690,7 @@ function filtraPrincipais(jogos, checkboxId){
 // ==========================================================
 // CONFIGURAÇÃO — preencha com os dados do SEU projeto Supabase
 // ==========================================================
-const APP_VERSAO = "v4.78";
+const APP_VERSAO = "v4.79";
 const SUPABASE_URL = "https://numdfazhxvykfemnvtxf.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_bGpo0XBNosRx9H4vwvPvvA_uPQL6Nph";
 const EDGE_URL = SUPABASE_URL + "/functions/v1/scanner";
@@ -4762,7 +4762,7 @@ function desenharRankingsSug(){
           <td onclick="fichaJogo(${idx})"><b>${x.c.nm}</b> x <b>${x.c.nv}</b></td>
           <td onclick="fichaJogo(${idx})" style="font-family:'IBM Plex Mono',monospace;color:var(--amber)"><b>${mostrarV}</b></td>
           <td onclick="fichaJogo(${idx})" style="font-size:12px;color:var(--chalk-dim)">${detalhe}</td>
-          <td style="white-space:nowrap"><button class="mini" onclick="event.stopPropagation();toggleJogosAnteriores('','${x.c.nm.replace(/'/g,String.fromCharCode(92,39))}','${x.c.j.mandante_id||''}','${x.c.nv.replace(/'/g,String.fromCharCode(92,39))}','${x.c.j.visitante_id||''}','${mktSist}')" title="Ver jogos anteriores" style="border-color:var(--amber);color:var(--amber)">📋</button> <button class="mini" onclick="event.stopPropagation();salvarSugestao('${x.c.nm.replace(/'/g,String.fromCharCode(92,39))}','${x.c.nv.replace(/'/g,String.fromCharCode(92,39))}','${((x.c.j.pais?x.c.j.pais+' — ':'')+(x.c.j.liga||'')).replace(/'/g,String.fromCharCode(92,39))}','${mktSist}',${ehLay?x.v/10:x.v/10},'Ranking ${mktSist}: ${ehLay?(x.v/10).toFixed(1)+' nota':x.v+'%'}', this, '${x.c.j.hora||''}', '${x.c.j.data_jogo||$('su-data').value||''}', ${x.c.j.fixture_id||'null'})">💾</button></td>
+          <td style="white-space:nowrap"><button class="mini" onclick="event.stopPropagation();toggleJogosAnteriores('','${x.c.nm.replace(/'/g,String.fromCharCode(92,39))}','${x.c.j.mandante_id||''}','${x.c.nv.replace(/'/g,String.fromCharCode(92,39))}','${x.c.j.visitante_id||''}','${mktSist}')" title="Ver jogos anteriores" style="border-color:var(--amber);color:var(--amber)">📋</button> <button class="mini" onclick="event.stopPropagation();salvarSugestao('${x.c.nm.replace(/'/g,String.fromCharCode(92,39))}','${x.c.nv.replace(/'/g,String.fromCharCode(92,39))}','${((x.c.j.pais?x.c.j.pais+' — ':'')+(x.c.j.liga||'')).replace(/'/g,String.fromCharCode(92,39))}','${mktSist}',${ehLay?x.v/10:x.v/10},'Ranking ${mktSist}: ${ehLay?(x.v/10).toFixed(1)+' nota':x.v+'%'}', this, '${x.c.j.hora||''}', '${x.c.j.data_jogo||$('su-data').value||''}', ${x.c.j.fixture_id||'null'})">💾</button> <button class="mini" style="border-color:var(--green);color:var(--green)" onclick="event.stopPropagation();salvarSugestao('${x.c.nm.replace(/'/g,String.fromCharCode(92,39))}','${x.c.nv.replace(/'/g,String.fromCharCode(92,39))}','${((x.c.j.pais?x.c.j.pais+' — ':'')+(x.c.j.liga||'')).replace(/'/g,String.fromCharCode(92,39))}','${mktSist}',${ehLay?x.v/10:x.v/10},'Ranking ${mktSist}: ${ehLay?(x.v/10).toFixed(1)+' nota':x.v+'%'}', this, '${x.c.j.hora||''}', '${x.c.j.data_jogo||$('su-data').value||''}', ${x.c.j.fixture_id||'null'}, true)">✅</button></td>
         </tr>`;
       }).join('')}
       </table></div></div>`;
